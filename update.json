@@ -1,7 +1,7 @@
 {
-  "version": "1.5.11",
-  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.5.11.zip",
-  "sha256": "E6BD6619F9D4884AE918B45CF53EA51E54D7C30E8710E995083990F97EA1B7F8",
+  "version": "1.5.12",
+  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.5.12.zip",
+  "sha256": "BAE618BD8A1E0D277586DA1DFD359BCABB78B30ECD40A2E79DEAAB587E6E6F00",
   "minimumChromeVersion": "120",
-  "notes": "新增鼓音色切換：保留現行真實鼓，另加入 Songsterr FluidSynth 合成模式；執行時載入官方 SGM_Plus_HQ 標準鼓組並依譜面 articulation 觸發。"
+  "notes": "Songsterr 模式改為逐曲音色：載入該修訂的獨立合成鼓軌，依譜面時間與 articulation 建立歌曲專屬音色池；同拍去重，缺少樣本時回退 Songsterr 標準鼓組。"
 }
