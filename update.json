@@ -1,7 +1,7 @@
 {
-  "version": "1.4.21",
-  "zipUrl": "https://github.com/ifoundu-tw/Y-GITADora/releases/download/v1.4.21/Songsterr-Drum-Extension-v1.4.21.zip",
-  "sha256": "E58BA65A8CA3AE8DD2364AE1E5AB141DA76F888F430B67F523F8B5E6529611BA",
+  "version": "1.5.0",
+  "zipUrl": "https://github.com/ifoundu-tw/Y-GITADora/releases/download/v1.5.0/Y-GITADora-v1.5.0.zip",
+  "sha256": "054C6CED873CE88FA1274E125F546A6238E3ECDD8E893D8147BE0B2EA2DD9556",
   "minimumChromeVersion": "120",
-  "notes": "更新來源改為內建 Y-GITADora update.json，使用者不需輸入網址。"
+  "notes": "YouTube 覆蓋頁整合完整歌單管理、存檔與更新器；移除試聽 LOG；加入固定擴充功能 key。"
 }
