@@ -1,7 +1,7 @@
 {
-  "version": "1.5.3",
-  "zipUrl": "https://github.com/ifoundu-tw/Y-GITADora/releases/download/v1.5.3/Y-GITADora-v1.5.3.zip",
-  "sha256": "77517E64E56FA0032351397FA25E142AAE367ECD669EF5267FF241CA1AE45693",
+  "version": "1.5.4",
+  "zipUrl": "https://github.com/ifoundu-tw/Y-GITADora/releases/download/v1.5.4/Y-GITADora-v1.5.4.zip",
+  "sha256": "A7F4C11816CF3F5964F949FF0B8F6103924CE827B6688B0645090D50FF2C8363",
   "minimumChromeVersion": "120",
-  "notes": "鼓譜結束立即顯示結算，但歌曲會繼續自然播放至結束。"
+  "notes": "CRASH、HI-HAT、HI-HAT PEDAL、BASS DRUM 的首次安裝預設音量調整為 50%。"
 }
