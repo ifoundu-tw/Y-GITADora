@@ -1,0 +1,45 @@
+{
+  "manifest_version": 3,
+  "name": "Songsterr Drum Game Prototype",
+  "version": "1.4.20",
+  "description": "在 Songsterr 鼓譜頁直接疊加節奏遊戲，沿用原聲影片與同步點。",
+  "permissions": ["storage", "tabs", "activeTab", "tabCapture"],
+  "host_permissions": [
+    "https://www.songsterr.com/*",
+    "https://dqsljvtekg760.cloudfront.net/*",
+    "https://d34shlm8p2ums2.cloudfront.net/*",
+    "https://d3cqchs6g3b5ew.cloudfront.net/*",
+    "https://i.ytimg.com/*",
+    "https://img.youtube.com/*",
+    "https://www.youtube.com/*",
+    "https://www.youtube-nocookie.com/*",
+    "https://github.com/*",
+    "https://api.github.com/*",
+    "https://objects.githubusercontent.com/*",
+    "https://raw.githubusercontent.com/*"
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; frame-src https://www.youtube.com https://www.youtube-nocookie.com"
+  },
+  "action": {"default_title": "開啟鼓遊戲播放清單"},
+  "background": {"service_worker": "background.js"},
+  "content_scripts": [{
+    "matches": ["https://www.songsterr.com/a/wsa/*"],
+    "js": ["content.js"],
+    "css": ["content.css"],
+    "run_at": "document_idle"
+  }, {
+    "matches": ["https://www.youtube.com/watch*"],
+    "js": ["youtube-player-bridge-main.js"],
+    "run_at": "document_start",
+    "world": "MAIN"
+  }, {
+    "matches": ["https://www.youtube.com/watch*"],
+    "js": ["youtube-playlist-overlay.js"],
+    "run_at": "document_idle"
+  }],
+  "web_accessible_resources": [{
+    "resources": ["samples/*.flac"],
+    "matches": ["https://www.songsterr.com/*"]
+  }]
+}

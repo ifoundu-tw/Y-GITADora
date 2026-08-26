@@ -1,0 +1,6 @@
+work/
+outputs/
+*.pem
+*.crx
+.DS_Store
+Thumbs.db

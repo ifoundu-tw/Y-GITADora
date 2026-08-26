@@ -1,0 +1,7 @@
+{
+  "version": "1.4.20",
+  "zipUrl": "https://github.com/ifoundu-tw/Y-GITADora/releases/download/v1.4.20/Songsterr-Drum-Extension-v1.4.20.zip",
+  "sha256": "90D3A33D17D5C19FE1B94800825925308F85265510D0F994F0EA3D4B45746BAB",
+  "minimumChromeVersion": "120",
+  "notes": "加入 YouTube 覆蓋式播放清單與 GitHub ZIP 開發版更新器。"
+}
