@@ -1,7 +1,7 @@
 {
-  "version": "1.5.0",
-  "zipUrl": "https://github.com/ifoundu-tw/Y-GITADora/releases/download/v1.5.0/Y-GITADora-v1.5.0.zip",
-  "sha256": "054C6CED873CE88FA1274E125F546A6238E3ECDD8E893D8147BE0B2EA2DD9556",
+  "version": "1.5.1",
+  "zipUrl": "https://github.com/ifoundu-tw/Y-GITADora/releases/download/v1.5.1/Y-GITADora-v1.5.1.zip",
+  "sha256": "B788B72AE097AA1FC16590A79F4AB1EC368C0370226CFC733D4A9F0FDC83ECFE",
   "minimumChromeVersion": "120",
-  "notes": "YouTube 覆蓋頁整合完整歌單管理、存檔與更新器；移除試聽 LOG；加入固定擴充功能 key。"
+  "notes": "播放清單卡片隱藏副歌秒數，恢復顯示歷史遊戲評級。"
 }
