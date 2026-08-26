@@ -1,0 +1,13 @@
+{
+  "name": "y-gitadora-extension-build",
+  "private": true,
+  "scripts": {
+    "build": "esbuild src/multiplayer.js --bundle --format=iife --platform=browser --target=chrome120 --outfile=../songsterr-drum-extension/multiplayer.js"
+  },
+  "dependencies": {
+    "firebase": "^12.0.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  }
+}

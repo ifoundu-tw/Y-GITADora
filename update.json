@@ -1,7 +1,7 @@
 {
-  "version": "1.5.4",
-  "zipUrl": "https://github.com/ifoundu-tw/Y-GITADora/releases/download/v1.5.4/Y-GITADora-v1.5.4.zip",
-  "sha256": "A7F4C11816CF3F5964F949FF0B8F6103924CE827B6688B0645090D50FF2C8363",
+  "version": "1.5.7",
+  "zipUrl": "https://github.com/ifoundu-tw/Y-GITADora/releases/download/v1.5.7/Y-GITADora-v1.5.7.zip",
+  "sha256": "1A37F0E48F2A74616F14CC2AE160595A51313DA1314063DA3A957253705B3CC2",
   "minimumChromeVersion": "120",
-  "notes": "CRASH、HI-HAT、HI-HAT PEDAL、BASS DRUM 的首次安裝預設音量調整為 50%。"
+  "notes": "加入 Firebase 房間配對、WebRTC 四人直連合奏、歌曲驗證、共同起跑、房主轉讓與純六位數字房號。"
 }

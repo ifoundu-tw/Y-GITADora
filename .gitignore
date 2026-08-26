@@ -4,3 +4,7 @@ outputs/
 *.crx
 .DS_Store
 Thumbs.db
+.pnpm-store/
+node_modules/
+.wrangler/
+realtime-server/
