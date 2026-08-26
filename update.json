@@ -1,7 +1,7 @@
 {
-  "version": "1.5.1",
-  "zipUrl": "https://github.com/ifoundu-tw/Y-GITADora/releases/download/v1.5.1/Y-GITADora-v1.5.1.zip",
-  "sha256": "B788B72AE097AA1FC16590A79F4AB1EC368C0370226CFC733D4A9F0FDC83ECFE",
+  "version": "1.5.2",
+  "zipUrl": "https://github.com/ifoundu-tw/Y-GITADora/releases/download/v1.5.2/Y-GITADora-v1.5.2.zip",
+  "sha256": "48F70297FDFB94C60A55B247EF6EA2A2B1991F22D6D4101F68DBAB5811CE9546",
   "minimumChromeVersion": "120",
-  "notes": "播放清單卡片隱藏副歌秒數，恢復顯示歷史遊戲評級。"
+  "notes": "恢復完整 BPM 最低／最高、音符至少，以及 BPM、音符升降冪排序。"
 }
