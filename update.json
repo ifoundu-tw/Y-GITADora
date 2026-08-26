@@ -1,7 +1,7 @@
 {
-  "version": "1.5.2",
-  "zipUrl": "https://github.com/ifoundu-tw/Y-GITADora/releases/download/v1.5.2/Y-GITADora-v1.5.2.zip",
-  "sha256": "48F70297FDFB94C60A55B247EF6EA2A2B1991F22D6D4101F68DBAB5811CE9546",
+  "version": "1.5.3",
+  "zipUrl": "https://github.com/ifoundu-tw/Y-GITADora/releases/download/v1.5.3/Y-GITADora-v1.5.3.zip",
+  "sha256": "77517E64E56FA0032351397FA25E142AAE367ECD669EF5267FF241CA1AE45693",
   "minimumChromeVersion": "120",
-  "notes": "恢復完整 BPM 最低／最高、音符至少，以及 BPM、音符升降冪排序。"
+  "notes": "鼓譜結束立即顯示結算，但歌曲會繼續自然播放至結束。"
 }
