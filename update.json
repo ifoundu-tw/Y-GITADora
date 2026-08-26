@@ -1,7 +1,7 @@
 {
-  "version": "1.5.10",
-  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.5.10.zip",
-  "sha256": "BCE77899433AA8C5140F202DC0CB2C5361724351FCBD29292DA182E8206217C4",
+  "version": "1.5.11",
+  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.5.11.zip",
+  "sha256": "E6BD6619F9D4884AE918B45CF53EA51E54D7C30E8710E995083990F97EA1B7F8",
   "minimumChromeVersion": "120",
-  "notes": "修正房主換歌後被Firebase導回房間舊歌曲；房主可停留新歌，確認後手動同步全房。"
+  "notes": "新增鼓音色切換：保留現行真實鼓，另加入 Songsterr FluidSynth 合成模式；執行時載入官方 SGM_Plus_HQ 標準鼓組並依譜面 articulation 觸發。"
 }
