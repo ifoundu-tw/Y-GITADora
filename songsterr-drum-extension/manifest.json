@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Songsterr Drum Game Prototype",
-  "version": "1.4.20",
+  "version": "1.4.21",
   "description": "在 Songsterr 鼓譜頁直接疊加節奏遊戲，沿用原聲影片與同步點。",
   "permissions": ["storage", "tabs", "activeTab", "tabCapture"],
   "host_permissions": [
