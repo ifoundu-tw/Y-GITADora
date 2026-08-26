@@ -1,7 +1,7 @@
 {
-  "version": "1.5.7",
-  "zipUrl": "https://github.com/ifoundu-tw/Y-GITADora/releases/download/v1.5.7/Y-GITADora-v1.5.7.zip",
-  "sha256": "1A37F0E48F2A74616F14CC2AE160595A51313DA1314063DA3A957253705B3CC2",
+  "version": "1.5.8",
+  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.5.8.zip",
+  "sha256": "4C9F0B7609627BD76E0D6EC4B6136CF4060F92FE7AF1CCFF0864B88B218C443D",
   "minimumChromeVersion": "120",
-  "notes": "加入 Firebase 房間配對、WebRTC 四人直連合奏、歌曲驗證、共同起跑、房主轉讓與純六位數字房號。"
+  "notes": "修正GitHub Release重新導向造成OTA Failed to fetch；多人合奏功能沿用v1.5.7。"
 }
