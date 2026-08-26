@@ -17497,6 +17497,7 @@
     const auth = getAuth(firebaseApp);
     const db = getDatabase(firebaseApp);
     const LATE_LIMIT_MS = 80;
+    const HOST_GRACE_MS = 5 * 60 * 1e3;
     const encoder = new TextEncoder();
     const gameApi = globalThis.__sdgGameApi;
     if (!gameApi) return;
@@ -17512,13 +17513,15 @@
       serverOffset: 0,
       song: null,
       unsubs: [],
-      lastStartId: ""
+      lastStartId: "",
+      hostElectionTimer: null,
+      hostElectionFor: null
     };
     const panel = document.createElement("section");
     panel.id = "sdg-multiplayer";
     panel.className = "collapsed";
     panel.innerHTML = `<h3><span>ONLINE SESSION</span><button id="sdg-mp-toggle">\u9023\u7DDA\u5408\u594F</button></h3><div class="sdg-mp-body"><div class="sdg-mp-row"><input id="sdg-mp-name" maxlength="24" placeholder="\u73A9\u5BB6\u540D\u7A31"><button id="sdg-mp-create">\u5EFA\u7ACB</button></div><div class="sdg-mp-row"><input id="sdg-mp-room" maxlength="6" placeholder="6\u4F4D\u623F\u865F"><button id="sdg-mp-join">\u52A0\u5165</button><button id="sdg-mp-leave">\u96E2\u958B</button></div><div>\u623F\u865F <span class="sdg-mp-code" id="sdg-mp-code">------</span></div><div id="sdg-mp-status">\u5C1A\u672A\u9023\u7DDA</div><div id="sdg-mp-players"></div><div class="sdg-mp-row"><button id="sdg-mp-song">\u540C\u6B65\u76EE\u524D\u6B4C\u66F2</button><button id="sdg-mp-ready">\u6E96\u5099</button><button id="sdg-mp-start">\u5168\u54E1\u958B\u59CB</button></div></div>`;
-    gameApi.root().append(panel);
+    gameApi.root().querySelector("#sdg-settings-side").append(panel);
     const $mp = (selector) => panel.querySelector(selector);
     $mp("#sdg-mp-toggle").onclick = () => panel.classList.toggle("collapsed");
     function status(text, type = "") {
@@ -17561,6 +17564,7 @@
       connect(roomId);
     }
     function disconnectRoom() {
+      cancelHostElection();
       closePeers();
       for (const unsub of mp.unsubs.splice(0)) try {
         unsub();
@@ -17575,7 +17579,7 @@
       mp.players = [];
       mp.hostId = null;
       mp.song = null;
-      await chrome.storage.session.remove("sdgMultiplayerResume");
+      await chrome.storage.local.remove("sdgMultiplayerResume");
       $mp("#sdg-mp-code").textContent = "------";
       renderPlayers();
       status("\u5DF2\u96E2\u958B\u623F\u9593");
@@ -17608,7 +17612,7 @@
         beginSynchronized(command.serverStartAt);
       }));
       status("\u5DF2\u9032\u623F\uFF0C\u5EFA\u7ACB\u73A9\u5BB6\u76F4\u9023\u4E2D\u2026", "wait");
-      chrome.storage.session.set({ sdgMultiplayerResume: { roomId, name: mp.name, savedAt: Date.now() } });
+      chrome.storage.local.set({ sdgMultiplayerResume: { roomId, name: mp.name, savedAt: Date.now() } });
     }
     function onMeta(meta) {
       if (!meta) return;
@@ -17624,9 +17628,33 @@
     }
     async function onPlayers(value) {
       mp.players = Object.entries(value).map(([playerId, player]) => ({ playerId, ...player }));
-      if (mp.hostId && !value[mp.hostId] && mp.players.length) await electHost();
+      if (mp.hostId && !value[mp.hostId] && mp.players.length) scheduleHostElection(mp.hostId);
+      else cancelHostElection();
       reconcilePeers();
       renderPlayers();
+    }
+    function cancelHostElection() {
+      if (mp.hostElectionTimer) clearTimeout(mp.hostElectionTimer);
+      mp.hostElectionTimer = null;
+      mp.hostElectionFor = null;
+    }
+    function scheduleHostElection(missingHostId) {
+      if (mp.hostElectionTimer && mp.hostElectionFor === missingHostId) return;
+      cancelHostElection();
+      mp.hostElectionFor = missingHostId;
+      mp.hostElectionTimer = setTimeout(async () => {
+        try {
+          const [metaSnapshot, playersSnapshot] = await Promise.all([get(ref(db, `rooms/${mp.roomId}/meta`)), get(ref(db, `rooms/${mp.roomId}/players`))]);
+          const meta = metaSnapshot.val(), playersValue = playersSnapshot.val() || {};
+          if (!meta || meta.hostId !== missingHostId || playersValue[missingHostId]) return;
+          mp.players = Object.entries(playersValue).map(([playerId, player]) => ({ playerId, ...player }));
+          if (mp.players.length) await electHost();
+        } catch (error2) {
+          status(`\u623F\u4E3B\u63A5\u4EFB\u5931\u6557\uFF1A${error2.message}`, "error");
+        } finally {
+          cancelHostElection();
+        }
+      }, HOST_GRACE_MS);
     }
     async function electHost() {
       const candidate = [...mp.players].sort((a, b) => a.joinedAt - b.joinedAt || a.playerId.localeCompare(b.playerId))[0]?.playerId;
@@ -17781,7 +17809,7 @@
       const { chart, songId, currentRevision, currentPart } = gameApi.state();
       if (songId !== mp.song.songId || currentRevision !== mp.song.revisionId || currentPart !== mp.song.partId) {
         status(`\u623F\u4E3B\u9078\u64C7\uFF1A${mp.song.title}\uFF0C\u6B63\u5728\u5207\u63DB\u2026`, "wait");
-        await chrome.storage.session.set({ sdgMultiplayerResume: { roomId: mp.roomId, name: mp.name, savedAt: Date.now() } });
+        await chrome.storage.local.set({ sdgMultiplayerResume: { roomId: mp.roomId, name: mp.name, savedAt: Date.now() } });
         location.href = mp.song.url;
         return;
       }
@@ -17846,7 +17874,7 @@
     };
     $mp("#sdg-mp-start").onclick = () => send({ type: "start" });
     identity().then(async () => {
-      const { sdgMultiplayerResume } = await chrome.storage.session.get("sdgMultiplayerResume");
+      const { sdgMultiplayerResume } = await chrome.storage.local.get("sdgMultiplayerResume");
       if (sdgMultiplayerResume?.roomId && Date.now() - sdgMultiplayerResume.savedAt < 30 * 60 * 1e3) {
         panel.classList.remove("collapsed");
         connect(sdgMultiplayerResume.roomId).catch((error2) => status(`\u91CD\u65B0\u9023\u7DDA\u5931\u6557\uFF1A${error2.message}`, "error"));

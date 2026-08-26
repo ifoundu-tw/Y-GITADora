@@ -16,19 +16,20 @@ import { getDatabase, get, onChildAdded, onDisconnect, onValue, push, ref, remov
   const auth = getAuth(firebaseApp);
   const db = getDatabase(firebaseApp);
   const LATE_LIMIT_MS = 80;
+  const HOST_GRACE_MS = 5 * 60 * 1000;
   const encoder = new TextEncoder();
   const gameApi = globalThis.__sdgGameApi;
   if (!gameApi) return;
   const mp = {
     roomId: "", playerId: "", name: "", hostId: null, hostEpoch: 0, songEpoch: 0,
-    players: [], peers: new Map(), serverOffset: 0, song: null, unsubs: [], lastStartId: "",
+    players: [], peers: new Map(), serverOffset: 0, song: null, unsubs: [], lastStartId: "", hostElectionTimer:null, hostElectionFor:null,
   };
 
   const panel = document.createElement("section");
   panel.id = "sdg-multiplayer";
   panel.className = "collapsed";
   panel.innerHTML = `<h3><span>ONLINE SESSION</span><button id="sdg-mp-toggle">連線合奏</button></h3><div class="sdg-mp-body"><div class="sdg-mp-row"><input id="sdg-mp-name" maxlength="24" placeholder="玩家名稱"><button id="sdg-mp-create">建立</button></div><div class="sdg-mp-row"><input id="sdg-mp-room" maxlength="6" placeholder="6位房號"><button id="sdg-mp-join">加入</button><button id="sdg-mp-leave">離開</button></div><div>房號 <span class="sdg-mp-code" id="sdg-mp-code">------</span></div><div id="sdg-mp-status">尚未連線</div><div id="sdg-mp-players"></div><div class="sdg-mp-row"><button id="sdg-mp-song">同步目前歌曲</button><button id="sdg-mp-ready">準備</button><button id="sdg-mp-start">全員開始</button></div></div>`;
-  gameApi.root().append(panel);
+  gameApi.root().querySelector("#sdg-settings-side").append(panel);
   const $mp = (selector) => panel.querySelector(selector);
   $mp("#sdg-mp-toggle").onclick = () => panel.classList.toggle("collapsed");
 
@@ -78,6 +79,7 @@ import { getDatabase, get, onChildAdded, onDisconnect, onValue, push, ref, remov
   }
 
   function disconnectRoom() {
+    cancelHostElection();
     closePeers();
     for (const unsub of mp.unsubs.splice(0)) try { unsub(); } catch {}
     if (mp.roomId && mp.playerId) remove(ref(db, `rooms/${mp.roomId}/players/${mp.playerId}`)).catch(()=>{});
@@ -85,7 +87,7 @@ import { getDatabase, get, onChildAdded, onDisconnect, onValue, push, ref, remov
 
   async function leaveRoom() {
     disconnectRoom(); mp.roomId=""; mp.players=[]; mp.hostId=null; mp.song=null;
-    await chrome.storage.session.remove("sdgMultiplayerResume");
+    await chrome.storage.local.remove("sdgMultiplayerResume");
     $mp("#sdg-mp-code").textContent="------"; renderPlayers(); status("已離開房間");
   }
 
@@ -114,7 +116,7 @@ import { getDatabase, get, onChildAdded, onDisconnect, onValue, push, ref, remov
       mp.lastStartId = command.id; beginSynchronized(command.serverStartAt);
     }));
     status("已進房，建立玩家直連中…", "wait");
-    chrome.storage.session.set({ sdgMultiplayerResume: { roomId, name: mp.name, savedAt: Date.now() } });
+    chrome.storage.local.set({ sdgMultiplayerResume: { roomId, name: mp.name, savedAt: Date.now() } });
   }
 
   function onMeta(meta) {
@@ -127,8 +129,26 @@ import { getDatabase, get, onChildAdded, onDisconnect, onValue, push, ref, remov
 
   async function onPlayers(value) {
     mp.players = Object.entries(value).map(([playerId, player]) => ({ playerId, ...player }));
-    if (mp.hostId && !value[mp.hostId] && mp.players.length) await electHost();
+    if (mp.hostId && !value[mp.hostId] && mp.players.length) scheduleHostElection(mp.hostId);
+    else cancelHostElection();
     reconcilePeers(); renderPlayers();
+  }
+
+  function cancelHostElection(){if(mp.hostElectionTimer)clearTimeout(mp.hostElectionTimer);mp.hostElectionTimer=null;mp.hostElectionFor=null}
+
+  function scheduleHostElection(missingHostId){
+    if(mp.hostElectionTimer&&mp.hostElectionFor===missingHostId)return;
+    cancelHostElection();mp.hostElectionFor=missingHostId;
+    mp.hostElectionTimer=setTimeout(async()=>{
+      try{
+        const [metaSnapshot,playersSnapshot]=await Promise.all([get(ref(db,`rooms/${mp.roomId}/meta`)),get(ref(db,`rooms/${mp.roomId}/players`))]);
+        const meta=metaSnapshot.val(),playersValue=playersSnapshot.val()||{};
+        if(!meta||meta.hostId!==missingHostId||playersValue[missingHostId])return;
+        mp.players=Object.entries(playersValue).map(([playerId,player])=>({playerId,...player}));
+        if(mp.players.length)await electHost();
+      }catch(error){status(`房主接任失敗：${error.message}`,"error")}
+      finally{cancelHostElection()}
+    },HOST_GRACE_MS)
   }
 
   async function electHost() {
@@ -254,7 +274,7 @@ import { getDatabase, get, onChildAdded, onDisconnect, onValue, push, ref, remov
     const {chart,songId,currentRevision,currentPart}=gameApi.state();
     if (songId !== mp.song.songId || currentRevision !== mp.song.revisionId || currentPart !== mp.song.partId) {
       status(`房主選擇：${mp.song.title}，正在切換…`, "wait");
-      await chrome.storage.session.set({ sdgMultiplayerResume: { roomId: mp.roomId, name: mp.name, savedAt: Date.now() } });
+      await chrome.storage.local.set({ sdgMultiplayerResume: { roomId: mp.roomId, name: mp.name, savedAt: Date.now() } });
       location.href = mp.song.url;
       return;
     }
@@ -318,7 +338,7 @@ import { getDatabase, get, onChildAdded, onDisconnect, onValue, push, ref, remov
   $mp("#sdg-mp-start").onclick = () => send({ type: "start" });
 
   identity().then(async () => {
-    const { sdgMultiplayerResume } = await chrome.storage.session.get("sdgMultiplayerResume");
+    const { sdgMultiplayerResume } = await chrome.storage.local.get("sdgMultiplayerResume");
     if (sdgMultiplayerResume?.roomId && Date.now() - sdgMultiplayerResume.savedAt < 30 * 60 * 1000) {
       panel.classList.remove("collapsed"); connect(sdgMultiplayerResume.roomId).catch((error)=>status(`重新連線失敗：${error.message}`,"error"));
     }
