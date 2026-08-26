@@ -17808,6 +17808,10 @@
       if (!mp.song) return;
       const { chart, songId, currentRevision, currentPart } = gameApi.state();
       if (songId !== mp.song.songId || currentRevision !== mp.song.revisionId || currentPart !== mp.song.partId) {
+        if (mp.playerId === mp.hostId) {
+          status(`\u76EE\u524D\u700F\u89BD\uFF1A${gameApi.state().currentMeta?.title || "\u65B0\u6B4C\u66F2"}\uFF1B\u623F\u9593\u4ECD\u662F\uFF1A${mp.song.title}\u3002\u78BA\u8A8D\u5F8C\u8ACB\u6309\u300C\u540C\u6B65\u76EE\u524D\u6B4C\u66F2\u300D`, "wait");
+          return;
+        }
         status(`\u623F\u4E3B\u9078\u64C7\uFF1A${mp.song.title}\uFF0C\u6B63\u5728\u5207\u63DB\u2026`, "wait");
         await chrome.storage.local.set({ sdgMultiplayerResume: { roomId: mp.roomId, name: mp.name, savedAt: Date.now() } });
         location.href = mp.song.url;

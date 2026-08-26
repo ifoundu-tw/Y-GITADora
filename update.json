@@ -1,7 +1,7 @@
 {
-  "version": "1.5.9",
-  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.5.9.zip",
-  "sha256": "252229118D6114BD0A46D47F687CBD6A6806E370C74F76D00FD996EAE947767B",
+  "version": "1.5.10",
+  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.5.10.zip",
+  "sha256": "BCE77899433AA8C5140F202DC0CB2C5361724351FCBD29292DA182E8206217C4",
   "minimumChromeVersion": "120",
-  "notes": "ONLINE SESSION移至右側鍵位順序下方；換歌自動續房；房主斷線接任寬限改為5分鐘。"
+  "notes": "修正房主換歌後被Firebase導回房間舊歌曲；房主可停留新歌，確認後手動同步全房。"
 }

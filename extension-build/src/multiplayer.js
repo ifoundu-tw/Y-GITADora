@@ -273,6 +273,7 @@ import { getDatabase, get, onChildAdded, onDisconnect, onValue, push, ref, remov
     if (!mp.song) return;
     const {chart,songId,currentRevision,currentPart}=gameApi.state();
     if (songId !== mp.song.songId || currentRevision !== mp.song.revisionId || currentPart !== mp.song.partId) {
+      if(mp.playerId===mp.hostId){status(`目前瀏覽：${gameApi.state().currentMeta?.title||'新歌曲'}；房間仍是：${mp.song.title}。確認後請按「同步目前歌曲」`,"wait");return}
       status(`房主選擇：${mp.song.title}，正在切換…`, "wait");
       await chrome.storage.local.set({ sdgMultiplayerResume: { roomId: mp.roomId, name: mp.name, savedAt: Date.now() } });
       location.href = mp.song.url;
