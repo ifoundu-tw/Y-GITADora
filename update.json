@@ -1,7 +1,7 @@
 {
-  "version": "1.6.4",
-  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.6.4.zip",
-  "sha256": "9C41D4494B964F6E0DC68DB2CB82101853199F5DF7114ECAFE68D481315093F9",
+  "version": "1.6.5",
+  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.6.5.zip",
+  "sha256": "4F3773CD1931AF8D8226EE4ADA9669FF829DB273FC83AFB7F8BD1B561B341409",
   "minimumChromeVersion": "120",
-  "notes": "修正 BASS 空撥無聲：未開始或未命中時，PICK 會依目前 ASDFG 組合播放試音；右側鍵位加入上撥、下撥兩個可自訂按鍵，預設 J/K 並保存設定。"
+  "notes": "修正 BASS HOLD 卡住：長條命中後會固定在判定線逐步縮短，尾端到達後移除。比照 GITADORA，尾端沒有判定，提早放開不斷 Combo；持續按住期間增加 HOLD 分數。"
 }
