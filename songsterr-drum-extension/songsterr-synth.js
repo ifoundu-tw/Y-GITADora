@@ -68,6 +68,17 @@ globalThis.SDGSongsterrSynth=(()=>{
     }
     return out;
   }
+  function transientStats(source,timeMs){
+    const start=Math.max(1,Math.floor((timeMs/1000-.004)*source.sampleRate)),length=Math.min(Math.floor(source.sampleRate*.12),source.length-start);
+    let energy=0,difference=0,peak=0,previous=0;
+    for(let i=0;i<length;i++){
+      let value=0;
+      for(let ch=0;ch<source.numberOfChannels;ch++)value+=source.getChannelData(ch)[start+i];
+      value/=source.numberOfChannels;
+      const absolute=Math.abs(value);energy+=absolute;difference+=Math.abs(value-previous);peak=Math.max(peak,absolute);previous=value;
+    }
+    return{brightness:difference/Math.max(.000001,energy),peak};
+  }
   function buildSongPools(notes,buffer){
     const pools={},sorted=notes.filter(n=>Number.isFinite(n.synth_time_ms)).slice().sort((a,b)=>a.synth_time_ms-b.synth_time_ms);
     for(let note of sorted){
@@ -75,7 +86,8 @@ globalThis.SDGSongsterrSynth=(()=>{
       const same=sorted.filter(x=>x!==note&&Math.abs(x.synth_time_ms-t)<12).length;
       const previous=[...sorted].reverse().find(x=>x.synth_time_ms<t-12),next=sorted.find(x=>x.synth_time_ms>t+12);
       const prevGap=previous?(t-previous.synth_time_ms)/1000:9,nextGap=next?(next.synth_time_ms-t)/1000:9;
-      const score=same*100+(prevGap<duration?30:0)+(nextGap<Math.min(duration,.65)?20:0)-Math.min(prevGap,3)-Math.min(nextGap,3);
+      const stats=transientStats(buffer,t),bassPenalty=note.lane==='bass_drum'?stats.brightness*1000+(stats.peak<.015?120:0):0;
+      const score=same*100+(prevGap<duration?30:0)+(nextGap<Math.min(duration,.65)?20:0)-Math.min(prevGap,3)-Math.min(nextGap,3)+bassPenalty;
       (pools[art]??=[]).push({note,score,prevGap,nextGap});
       (pools[`lane:${note.lane}`]??=[]).push({note,score:score+25,prevGap,nextGap});
     }

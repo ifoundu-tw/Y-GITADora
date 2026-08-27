@@ -1,7 +1,7 @@
 {
-  "version": "1.5.12",
-  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.5.12.zip",
-  "sha256": "BAE618BD8A1E0D277586DA1DFD359BCABB78B30ECD40A2E79DEAAB587E6E6F00",
+  "version": "1.5.13",
+  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.5.13.zip",
+  "sha256": "721815A5ABC3DE3FAD69B1EBE8478A1D307D567D8087A88DA25EDB2913F73EA4",
   "minimumChromeVersion": "120",
-  "notes": "Songsterr 模式改為逐曲音色：載入該修訂的獨立合成鼓軌，依譜面時間與 articulation 建立歌曲專屬音色池；同拍去重，缺少樣本時回退 Songsterr 標準鼓組。"
+  "notes": "修正逐曲音色的大鼓樣本混入 Hi-Hat：新增大鼓瞬態頻譜純度檢查，優先選擇低頻集中、無鈸聲殘留的候選擊點。"
 }
