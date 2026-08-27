@@ -1,7 +1,7 @@
 {
-  "version": "1.5.19",
-  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.5.19.zip",
-  "sha256": "F4859A3AF5DB061A74A33306A47EE9BF63D5377D5F9E3F3F05B72BBA178283EB",
+  "version": "1.5.20",
+  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.5.20.zip",
+  "sha256": "A827D25B65098CB189CC9408A02207F5E0EE8BF8248EE53281B2CBDFB88E4570",
   "minimumChromeVersion": "120",
-  "notes": "鍵位與順序下方新增音量進階設定：主輸出與九軌可調 -24～+12 dB、數字輸入、逐軌試聽與歸零；加入 Limiter 開關／上限，以及全部歸零、恢復 Songsterr 基準和出廠設定。"
+  "notes": "修正插件按鈕開啟的 YouTube 播放清單卷軸：歌曲區改為真正的獨立滾動容器，滑鼠滾輪不再被底層 YouTube 攔截，標題與篩選列保持固定。"
 }
