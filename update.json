@@ -1,7 +1,7 @@
 {
-  "version": "1.5.17",
-  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.5.17.zip",
-  "sha256": "AA37BDDEC14B1373507D75F556D8F3C1C9596745890663341DC4B24F31052640",
+  "version": "1.5.18",
+  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.5.18.zip",
+  "sha256": "6C3B67C4F4BCB69B2D5503BDC7EB0396711205B893DC338E786EE4906C0C6039",
   "minimumChromeVersion": "120",
-  "notes": "撤除 Opus 鼓軌切片，改由 Songsterr 同款 FluidSynth 與 SoundFont，依譜面 MIDI Note、演奏法和力度單獨預渲染乾淨按鍵音；支援力度狀態繼承、自然疊音與正確 Choke。"
+  "notes": "修正空 MIDI 值被轉成 0，造成所有手動按鍵都播放同一個大鼓音色；現在會依各軌 lane 正確選用 Crash、Hi-Hat、Snare、Tom、Bass Drum 與 Ride。"
 }

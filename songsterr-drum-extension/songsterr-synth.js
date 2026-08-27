@@ -7,7 +7,7 @@ globalThis.SDGSongsterrSynth=(()=>{
   const activeVoices=new Map();
   function decodeBase64(value){const raw=atob(value),bytes=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);return bytes.buffer}
   function quantizeVelocity(value){const v=Math.max(1,Math.min(127,Math.round(Number(value)||96)));return Math.max(16,Math.min(127,Math.round(v/16)*16))}
-  function resolveMidi(art,lane,midi){if(Number.isFinite(Number(midi)))return Number(midi);if(art&&midiByArt[art]!=null)return midiByArt[art];if(art&&midiByArt[art.replace(/-choke$/,'')]!=null)return midiByArt[art.replace(/-choke$/,'')];return laneMidi[lane]??38}
+  function resolveMidi(art,lane,midi){if(midi!==null&&midi!==undefined&&midi!==''&&Number.isFinite(Number(midi)))return Number(midi);if(art&&midiByArt[art]!=null)return midiByArt[art];if(art&&midiByArt[art.replace(/-choke$/,'')]!=null)return midiByArt[art.replace(/-choke$/,'')];return laneMidi[lane]??38}
   function renderDuration(art,midi){if(/crash|china|splash|ride/.test(art||'')||[49,51,52,53,55,57,59,93,94,95,96,97,98].includes(midi))return 3.2;if(/open-hihat|half-hihat/.test(art||'')||[46,92].includes(midi))return 1.5;if(/closed-hihat|foot-hihat/.test(art||'')||[42,44].includes(midi))return .55;return 1.05}
   async function ensure(){
     if(state==='ready')return true;if(readyPromise)return readyPromise;state='loading';
