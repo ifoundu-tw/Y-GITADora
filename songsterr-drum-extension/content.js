@@ -1,4 +1,5 @@
 (()=>{
+if(new URLSearchParams(location.search).get('sdg_mode')==='bass')return;
 if(document.querySelector('#sdg-root'))return;
 const page=location.href.match(/-s(\d+)(?:t(\d+))?(?:\/r(\d+))?/);if(!page)return;
 const songId=+page[1],urlPart=page[2]?+page[2]:null,urlRevision=page[3]?+page[3]:null;

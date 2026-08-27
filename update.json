@@ -1,7 +1,7 @@
 {
-  "version": "1.5.20",
-  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.5.20.zip",
-  "sha256": "A827D25B65098CB189CC9408A02207F5E0EE8BF8248EE53281B2CBDFB88E4570",
+  "version": "1.6.0",
+  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.6.0.zip",
+  "sha256": "308B25F459D0C7039EE3A8AF1ECD3653D34793327C84A280E792349BF061C2BD",
   "minimumChromeVersion": "120",
-  "notes": "修正插件按鈕開啟的 YouTube 播放清單卷軸：歌曲區改為真正的獨立滾動容器，滑鼠滾輪不再被底層 YouTube 攔截，標題與篩選列保持固定。"
+  "notes": "新增 Bass 五色模式第一版：播放清單 B 鍵進入，自動選擇 Songsterr Bass 軌，弦格轉五色譜，A～G 品鍵＋J/K 撥弦、長音保持判定，並使用官方 Fingered Bass SoundFont。"
 }

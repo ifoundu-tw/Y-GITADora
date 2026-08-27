@@ -1,19 +1,20 @@
 const armedTabs=new Set();
-let songsterrSoundfontBase64=null;
+const songsterrSoundfontCache=new Map();
 chrome.runtime.onMessage.addListener((message,sender,reply)=>{
   if(message?.type==='sdg-arm-auto-sync'&&sender.tab?.id){armedTabs.add(sender.tab.id);reply({ok:true});return}
   if(message?.type==='sdg-songsterr-soundfont'){
     (async()=>{
       try{
-        if(!songsterrSoundfontBase64){
+        let base64=songsterrSoundfontCache.get(message.url);
+        if(!base64){
           const response=await fetch(message.url,{cache:'force-cache'});
           if(!response.ok)throw Error(`HTTP ${response.status}`);
           const bytes=new Uint8Array(await response.arrayBuffer());
           let binary='',chunk=32768;
           for(let i=0;i<bytes.length;i+=chunk)binary+=String.fromCharCode(...bytes.subarray(i,i+chunk));
-          songsterrSoundfontBase64=btoa(binary);
+          base64=btoa(binary);songsterrSoundfontCache.set(message.url,base64);
         }
-        reply({ok:true,base64:songsterrSoundfontBase64});
+        reply({ok:true,base64});
       }catch(error){reply({ok:false,error:error?.message||String(error)})}
     })();
     return true;
