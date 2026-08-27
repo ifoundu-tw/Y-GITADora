@@ -1,7 +1,7 @@
 {
-  "version": "1.7.0",
-  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.7.0.zip",
-  "sha256": "5C2A27F2A2709841A6AF1E5801283C1DD0D4FF3C154AA0600CC9CB2B1503F40C",
+  "version": "1.7.1",
+  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.7.1.zip",
+  "sha256": "1077A5D24526FF9D45382B49D269887978320FFC06430D4EBC1DFE1C25F61AC6",
   "minimumChromeVersion": "120",
-  "notes": "BASS 演奏鏈第一版：整譜預先解析 Tie、Legato／Shift與Downwards；Tie不重複起音，Legato自動滑至同弦目標音，Slide Out尾段下滑。每次撥弦使用獨立MIDI channel，同音連打不再互相切斷；PERFECT／GREAT播放完整鏈，GOOD／OK縮短。"
+  "notes": "打擊區右側新增同步落下的小節編號軌。BASS連續同弦、不同格、各自超過520ms且首尾無縫的長音，合併成一次HOLD判定；內部換格仍按原譜自動重新起音。"
 }
