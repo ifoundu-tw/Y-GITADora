@@ -1,8 +1,10 @@
 globalThis.SDGBassSynth=(()=>{
   const FONT_URL='https://static.songsterr.com/midi-player-v0/SGM_Plus_HQ/000-033-Fingered_Bass.sf3';
-  let context,synth,node,readyPromise,state='idle',error='';
+  let context,synth,node,readyPromise,state='idle',error='';const noteTimers=new Map;
   function decode(value){const raw=atob(value),bytes=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);return bytes.buffer}
   async function ensure(){if(state==='ready')return true;if(readyPromise)return readyPromise;state='loading';readyPromise=(async()=>{await globalThis.JSSynth.waitForReady();globalThis.JSSynth.disableLogging?.();context=context||new AudioContext({latencyHint:'interactive'});await context.resume();const response=await chrome.runtime.sendMessage({type:'sdg-songsterr-soundfont',url:FONT_URL});if(!response?.ok)throw Error(response?.error||'Bass SoundFont 下載失敗');synth=new globalThis.JSSynth.Synthesizer();synth.init(context.sampleRate,{polyphony:128,reverbActive:true,chorusActive:false});synth.setGain(1.2);const id=await synth.loadSFont(decode(response.base64));synth.midiProgramSelect(0,id,0,33);node=synth.createAudioNode(context,512);node.connect(context.destination);state='ready';error='';return true})().catch(e=>{state='error';error=e?.message||String(e);readyPromise=null;throw e});return readyPromise}
-  function play(midi,velocity=96,durationMs=500,volume=1){if(state!=='ready'){ensure().catch(()=>{});return false}context.resume();const v=Math.max(1,Math.min(127,Math.round(velocity*volume)));synth.midiNoteOn(0,midi,v);setTimeout(()=>{try{synth?.midiNoteOff(0,midi)}catch{}},Math.max(60,durationMs));return true}
-  return{ensure,play,getState:()=>({state,error,url:FONT_URL})};
+  function play(midi,velocity=96,durationMs=500,volume=1){if(state!=='ready'){ensure().catch(()=>{});return false}context.resume();const old=noteTimers.get(midi);if(old){clearTimeout(old);try{synth.midiNoteOff(0,midi)}catch{}}const v=Math.max(1,Math.min(127,Math.round(velocity*volume)));synth.midiNoteOn(0,midi,v);const timer=setTimeout(()=>{if(noteTimers.get(midi)!==timer)return;noteTimers.delete(midi);try{synth?.midiNoteOff(0,midi)}catch{}},Math.max(60,durationMs));noteTimers.set(midi,timer);return true}
+  function stop(midi){if(state!=='ready')return false;let timer=noteTimers.get(midi);if(timer)clearTimeout(timer);noteTimers.delete(midi);try{synth.midiNoteOff(0,midi);return true}catch{return false}}
+  function stopAll(){for(let timer of noteTimers.values())clearTimeout(timer);noteTimers.clear();if(state!=='ready')return false;try{synth.midiAllNotesOff(0);return true}catch{return false}}
+  return{ensure,play,stop,stopAll,getState:()=>({state,error,url:FONT_URL})};
 })();

@@ -1,7 +1,7 @@
 {
-  "version": "1.6.2",
-  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.6.2.zip",
-  "sha256": "762AB9F8CC8CFEBD1ACAA42C825C2FEBB4B2B68ED7D7B1518B35059546EE7DDD",
+  "version": "1.6.3",
+  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.6.3.zip",
+  "sha256": "9D6F99DA0BFB56B5D1C90A70F2C3B62150A1F7688B1A719790F50FDA7772F6AE",
   "minimumChromeVersion": "120",
-  "notes": "樂器改為單頁切換：鼓與 BASS 共用同一個 Songsterr 原生播放器，切換時不跳頁、不重載，只更新中間打擊軌道與對應鍵位內容。"
+  "notes": "BASS 改為 GITADORA 操作：ASDFG 只按弦，J/K 上下撥弦才判定與發聲；加入 OPEN PICK、直線 HOLD、提早放開判定，並依譜面實際音長控制 Bass 發聲。"
 }
