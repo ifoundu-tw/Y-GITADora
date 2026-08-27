@@ -1,7 +1,7 @@
 {
-  "version": "1.7.1",
-  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.7.1.zip",
-  "sha256": "1077A5D24526FF9D45382B49D269887978320FFC06430D4EBC1DFE1C25F61AC6",
+  "version": "1.7.2",
+  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.7.2.zip",
+  "sha256": "2DA7B064D13B01D9A750E866B4AF9FF4907A7371037550FE548CDDD92C9BF23D",
   "minimumChromeVersion": "120",
-  "notes": "打擊區右側新增同步落下的小節編號軌。BASS連續同弦、不同格、各自超過520ms且首尾無縫的長音，合併成一次HOLD判定；內部換格仍按原譜自動重新起音。"
+  "notes": "小節尺改為像左側時間尺一樣依實際打擊區定位，緊貼BASS G欄右緣並保留獨立空間；小節數字放大至25px，與SCORE數字同級。"
 }
