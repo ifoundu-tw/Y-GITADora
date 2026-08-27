@@ -1,7 +1,7 @@
 {
-  "version": "1.6.1",
-  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.6.1.zip",
-  "sha256": "332C8DD7B1E592E6FF06633540FF5E40C0C0001A94E4AC9A58AF710A45BE11EB",
+  "version": "1.6.2",
+  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.6.2.zip",
+  "sha256": "762AB9F8CC8CFEBD1ACAA42C825C2FEBB4B2B68ED7D7B1518B35059546EE7DDD",
   "minimumChromeVersion": "120",
-  "notes": "統一樂器入口：播放清單改為單一綠色播放鍵；遊戲右側鍵位上方新增依歌曲譜面顯示的鼓、BASS、主奏吉他、節奏吉他列。Bass 畫面同步加入左側歌單與右側鍵位區。"
+  "notes": "樂器改為單頁切換：鼓與 BASS 共用同一個 Songsterr 原生播放器，切換時不跳頁、不重載，只更新中間打擊軌道與對應鍵位內容。"
 }
