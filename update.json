@@ -1,7 +1,7 @@
 {
-  "version": "1.5.16",
-  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.5.16.zip",
-  "sha256": "B7A4047F2A9CD238119CBF5676B7C842D34FE2897902A070379484492430800A",
+  "version": "1.5.17",
+  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.5.17.zip",
+  "sha256": "AA37BDDEC14B1373507D75F556D8F3C1C9596745890663341DC4B24F31052640",
   "minimumChromeVersion": "120",
-  "notes": "連拍與疊音比照 Songsterr：每擊獨立保留完整尾音，不再依下一拍裁短；只在 Hi-Hat 與明確 Cymbal Choke 時截音，並改用快速安全 limiter，避免密集 16 分音符被壓掉。"
+  "notes": "撤除 Opus 鼓軌切片，改由 Songsterr 同款 FluidSynth 與 SoundFont，依譜面 MIDI Note、演奏法和力度單獨預渲染乾淨按鍵音；支援力度狀態繼承、自然疊音與正確 Choke。"
 }
