@@ -1,7 +1,7 @@
 {
-  "version": "1.6.6",
-  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.6.6.zip",
-  "sha256": "2B3D3B6CC8C60A65EA8B202D5F930EBF81F38B0E8F6CA03A4A8644AAED8960C7",
+  "version": "1.6.7",
+  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.6.7.zip",
+  "sha256": "81D8E0B792166E2EAF64D6936E1305A91A5B2D286B070B4F5725595DD4BB56A5",
   "minimumChromeVersion": "120",
-  "notes": "再次修正 BASS HOLD 殘留：加入獨立於 active hold 狀態的強制清理保險；任何已判定長音超過譜面尾端 80ms 都會移除，包含提早放開、AUTO 與異常中斷路徑。"
+  "notes": "修正 BASS HOLD 命中後拆成移動光標與固定殘影：移除判定線釘選座標，命中後整條 HOLD 只沿原時間軸繼續向下，尾端通過後刪除。"
 }
