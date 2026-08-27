@@ -1,7 +1,7 @@
 {
-  "version": "1.6.3",
-  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.6.3.zip",
-  "sha256": "9D6F99DA0BFB56B5D1C90A70F2C3B62150A1F7688B1A719790F50FDA7772F6AE",
+  "version": "1.6.4",
+  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.6.4.zip",
+  "sha256": "9C41D4494B964F6E0DC68DB2CB82101853199F5DF7114ECAFE68D481315093F9",
   "minimumChromeVersion": "120",
-  "notes": "BASS 改為 GITADORA 操作：ASDFG 只按弦，J/K 上下撥弦才判定與發聲；加入 OPEN PICK、直線 HOLD、提早放開判定，並依譜面實際音長控制 Bass 發聲。"
+  "notes": "修正 BASS 空撥無聲：未開始或未命中時，PICK 會依目前 ASDFG 組合播放試音；右側鍵位加入上撥、下撥兩個可自訂按鍵，預設 J/K 並保存設定。"
 }
