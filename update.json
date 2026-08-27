@@ -1,7 +1,7 @@
 {
-  "version": "1.6.0",
-  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.6.0.zip",
-  "sha256": "308B25F459D0C7039EE3A8AF1ECD3653D34793327C84A280E792349BF061C2BD",
+  "version": "1.6.1",
+  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.6.1.zip",
+  "sha256": "332C8DD7B1E592E6FF06633540FF5E40C0C0001A94E4AC9A58AF710A45BE11EB",
   "minimumChromeVersion": "120",
-  "notes": "新增 Bass 五色模式第一版：播放清單 B 鍵進入，自動選擇 Songsterr Bass 軌，弦格轉五色譜，A～G 品鍵＋J/K 撥弦、長音保持判定，並使用官方 Fingered Bass SoundFont。"
+  "notes": "統一樂器入口：播放清單改為單一綠色播放鍵；遊戲右側鍵位上方新增依歌曲譜面顯示的鼓、BASS、主奏吉他、節奏吉他列。Bass 畫面同步加入左側歌單與右側鍵位區。"
 }
