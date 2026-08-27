@@ -1,7 +1,7 @@
 {
-  "version": "1.5.18",
-  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.5.18.zip",
-  "sha256": "6C3B67C4F4BCB69B2D5503BDC7EB0396711205B893DC338E786EE4906C0C6039",
+  "version": "1.5.19",
+  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.5.19.zip",
+  "sha256": "F4859A3AF5DB061A74A33306A47EE9BF63D5377D5F9E3F3F05B72BBA178283EB",
   "minimumChromeVersion": "120",
-  "notes": "修正空 MIDI 值被轉成 0，造成所有手動按鍵都播放同一個大鼓音色；現在會依各軌 lane 正確選用 Crash、Hi-Hat、Snare、Tom、Bass Drum 與 Ride。"
+  "notes": "鍵位與順序下方新增音量進階設定：主輸出與九軌可調 -24～+12 dB、數字輸入、逐軌試聽與歸零；加入 Limiter 開關／上限，以及全部歸零、恢復 Songsterr 基準和出廠設定。"
 }
