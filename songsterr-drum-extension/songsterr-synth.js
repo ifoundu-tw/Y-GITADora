@@ -15,6 +15,7 @@ globalThis.SDGSongsterrSynth=(()=>{
   const laneMidi={crash:49,hihat:42,hihat_pedal:44,snare:38,high_tom:50,bass_drum:36,medium_tom:47,floor_tom:41,ride:51};
   let context,synth,node,songBus,songLimiter,readyPromise,state='idle',lastError='',songKey='',songState='none';
   let songPools={},songBuffer=null;
+  const activeVoices=new Map();
 
   function decodeBase64(value){
     const raw=atob(value),bytes=new Uint8Array(raw.length);
@@ -33,7 +34,9 @@ globalThis.SDGSongsterrSynth=(()=>{
       await context.resume();
       if(!songBus){
         songBus=context.createGain();songLimiter=context.createDynamicsCompressor();
-        songLimiter.threshold.value=-7;songLimiter.knee.value=10;songLimiter.ratio.value=5;songLimiter.attack.value=.002;songLimiter.release.value=.12;
+        // Songsterr keeps drum voices polyphonic.  This stage is only a fast
+        // safety ceiling; it must recover before the next 16th-note hit.
+        songLimiter.threshold.value=-1.5;songLimiter.knee.value=1;songLimiter.ratio.value=20;songLimiter.attack.value=.001;songLimiter.release.value=.045;
         songBus.connect(songLimiter).connect(context.destination);
       }
       synth=new globalThis.JSSynth.Synthesizer();
@@ -73,6 +76,43 @@ globalThis.SDGSongsterrSynth=(()=>{
     }
     return out;
   }
+  function rememberVoice(group,source,gain){
+    const voice={source,gain},voices=activeVoices.get(group)||[];
+    voices.push(voice);activeVoices.set(group,voices);
+    source.onended=()=>{
+      const current=activeVoices.get(group)||[],next=current.filter(x=>x!==voice);
+      if(next.length)activeVoices.set(group,next);else activeVoices.delete(group);
+    };
+  }
+  function stopGroup(group,seconds=.025){
+    const now=context?.currentTime||0;
+    for(const voice of activeVoices.get(group)||[]){
+      try{
+        voice.gain.gain.cancelScheduledValues(now);
+        voice.gain.gain.setValueAtTime(Math.max(.0001,voice.gain.gain.value),now);
+        voice.gain.gain.exponentialRampToValueAtTime(.0001,now+seconds);
+        voice.source.stop(now+seconds+.006);
+      }catch{}
+    }
+    activeVoices.delete(group);
+  }
+  function voiceGroup(art,lane){
+    if(/open-hihat|half-hihat/.test(art||''))return'hihat-open';
+    if(/closed-hihat/.test(art||''))return'hihat-closed';
+    if(/foot-hihat/.test(art||'')||lane==='hihat_pedal')return'hihat-pedal';
+    if(/high-crash/.test(art||''))return'crash-high';
+    if(/medium-crash/.test(art||''))return'crash-medium';
+    if(/china/.test(art||''))return'crash-china';
+    if(/splash/.test(art||''))return'crash-splash';
+    if(/ride/.test(art||''))return'ride';
+    return lane||art||'drum';
+  }
+  function applyChoke(art,lane){
+    if(/closed-hihat|foot-hihat/.test(art||'')||lane==='hihat_pedal')stopGroup('hihat-open');
+    if(!/-choke$/.test(art||''))return;
+    const clean=art.replace(/-choke$/,''),group=voiceGroup(clean,lane);
+    stopGroup(group,.018);
+  }
   function transientStats(source,timeMs){
     const start=Math.max(1,Math.floor((timeMs/1000-.004)*source.sampleRate)),length=Math.min(Math.floor(source.sampleRate*.12),source.length-start);
     let energy=0,difference=0,peak=0,previous=0;
@@ -92,17 +132,19 @@ globalThis.SDGSongsterrSynth=(()=>{
       const previous=[...sorted].reverse().find(x=>x.synth_time_ms<t-12),next=sorted.find(x=>x.synth_time_ms>t+12);
       const prevGap=previous?(t-previous.synth_time_ms)/1000:9,nextGap=next?(next.synth_time_ms-t)/1000:9;
       const stats=transientStats(buffer,t),bassPenalty=note.lane==='bass_drum'?stats.brightness*1000+(stats.peak<.015?120:0):0;
-      const score=same*100+(prevGap<duration?30:0)+(nextGap<Math.min(duration,.65)?20:0)-Math.min(prevGap,3)-Math.min(nextGap,3)+bassPenalty;
+      const score=same*100+(prevGap<.025?100:0)+(nextGap<duration+.03?100:0)-Math.min(prevGap,3)-Math.min(nextGap,3)+bassPenalty;
       (pools[art]??=[]).push({note,score,prevGap,nextGap});
       (pools[`lane:${note.lane}`]??=[]).push({note,score:score+25,prevGap,nextGap});
     }
     const rendered={};
     for(let [key,candidates] of Object.entries(pools)){
-      const chosen=candidates.sort((a,b)=>a.score-b.score).filter((x,i,a)=>a.findIndex(y=>Math.abs(y.note.synth_time_ms-x.note.synth_time_ms)<250)===i).slice(0,3);
-      rendered[key]=chosen.map(({note,nextGap})=>{
-        const duration=Math.max(.12,Math.min(sampleDuration(note.articulation),nextGap-.012));
-        return makeSlice(buffer,note.synth_time_ms/1000-.006,duration);
-      });
+      // A one-shot must contain its complete natural tail.  Reject crowded
+      // donors instead of cutting them to the next chart event; FluidSynth is
+      // the safe fallback when the rendered stem has no isolated hit.
+      const chosen=candidates.sort((a,b)=>a.score-b.score)
+        .filter(x=>x.prevGap>=.025&&x.nextGap>=sampleDuration(x.note.articulation)+.03)
+        .filter((x,i,a)=>a.findIndex(y=>Math.abs(y.note.synth_time_ms-x.note.synth_time_ms)<250)===i).slice(0,3);
+      if(chosen.length)rendered[key]=chosen.map(({note})=>makeSlice(buffer,note.synth_time_ms/1000-.006,sampleDuration(note.articulation)));
     }
     return rendered;
   }
@@ -130,6 +172,7 @@ globalThis.SDGSongsterrSynth=(()=>{
     return laneMidi[lane]??38;
   }
   function play(art,lane,intensity=.75,master=1,laneLevel=1,noteTime=null){
+    applyChoke(art,lane);
     if(songState==='ready'){
       const pool=songPools[art]||songPools[`lane:${lane}`];
       if(pool?.length){
@@ -138,7 +181,8 @@ globalThis.SDGSongsterrSynth=(()=>{
         // The rendered Songsterr stem already contains note velocity. Do not apply
         // chart intensity a second time. 2.2x restores the perceived level of the
         // full synth mix; the limiter controls dense rolls and simultaneous hits.
-        gain.gain.value=Math.max(.0001,2.2*master*laneLevel);source.connect(gain).connect(songBus);source.start();
+        gain.gain.value=Math.max(.0001,2.2*master*laneLevel);source.connect(gain).connect(songBus);
+        rememberVoice(voiceGroup(art,lane),source,gain);source.start();
         return true;
       }
     }

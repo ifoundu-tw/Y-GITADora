@@ -1,7 +1,7 @@
 {
-  "version": "1.5.15",
-  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.5.15.zip",
-  "sha256": "DAFA8AD82ABEA7EF1442D9674B80E96AF4DCC5E2247724DB55520C46B67BC56D",
+  "version": "1.5.16",
+  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.5.16.zip",
+  "sha256": "B7A4047F2A9CD238119CBF5676B7C842D34FE2897902A070379484492430800A",
   "minimumChromeVersion": "120",
-  "notes": "修正同拍多樂器被錯誤去重：Crash＋Bass Drum 等同時敲擊現在會各自播放並正確疊音，不再遺失第二個樂器聲音。"
+  "notes": "連拍與疊音比照 Songsterr：每擊獨立保留完整尾音，不再依下一拍裁短；只在 Hi-Hat 與明確 Cymbal Choke 時截音，並改用快速安全 limiter，避免密集 16 分音符被壓掉。"
 }
