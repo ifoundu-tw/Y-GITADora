@@ -1,7 +1,7 @@
 {
-  "version": "1.6.5",
-  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.6.5.zip",
-  "sha256": "4F3773CD1931AF8D8226EE4ADA9669FF829DB273FC83AFB7F8BD1B561B341409",
+  "version": "1.6.6",
+  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.6.6.zip",
+  "sha256": "2B3D3B6CC8C60A65EA8B202D5F930EBF81F38B0E8F6CA03A4A8644AAED8960C7",
   "minimumChromeVersion": "120",
-  "notes": "修正 BASS HOLD 卡住：長條命中後會固定在判定線逐步縮短，尾端到達後移除。比照 GITADORA，尾端沒有判定，提早放開不斷 Combo；持續按住期間增加 HOLD 分數。"
+  "notes": "再次修正 BASS HOLD 殘留：加入獨立於 active hold 狀態的強制清理保險；任何已判定長音超過譜面尾端 80ms 都會移除，包含提早放開、AUTO 與異常中斷路徑。"
 }
