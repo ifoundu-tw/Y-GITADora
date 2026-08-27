@@ -13,7 +13,7 @@ globalThis.SDGSongsterrSynth=(()=>{
     'ride-choke':94,'splash-choke':95,'china-choke':96,'high-crash-choke':97,'medium-crash-choke':98
   };
   const laneMidi={crash:49,hihat:42,hihat_pedal:44,snare:38,high_tom:50,bass_drum:36,medium_tom:47,floor_tom:41,ride:51};
-  let context,synth,node,readyPromise,state='idle',lastError='',songKey='',songState='none';
+  let context,synth,node,songBus,songLimiter,readyPromise,state='idle',lastError='',songKey='',songState='none';
   let songPools={},songBuffer=null,lastSongHit={time:null,at:0};
 
   function decodeBase64(value){
@@ -31,6 +31,11 @@ globalThis.SDGSongsterrSynth=(()=>{
       globalThis.JSSynth.disableLogging?.();
       context=context||new AudioContext({latencyHint:'interactive'});
       await context.resume();
+      if(!songBus){
+        songBus=context.createGain();songLimiter=context.createDynamicsCompressor();
+        songLimiter.threshold.value=-7;songLimiter.knee.value=10;songLimiter.ratio.value=5;songLimiter.attack.value=.002;songLimiter.release.value=.12;
+        songBus.connect(songLimiter).connect(context.destination);
+      }
       synth=new globalThis.JSSynth.Synthesizer();
       synth.init(context.sampleRate);
       synth.setGain(1.2);
@@ -131,7 +136,11 @@ globalThis.SDGSongsterrSynth=(()=>{
       const pool=songPools[art]||songPools[`lane:${lane}`];
       if(pool?.length){
         const buffer=pool[Math.floor(Math.random()*pool.length)],source=context.createBufferSource(),gain=context.createGain();
-        source.buffer=buffer;gain.gain.value=Math.max(.0001,master*laneLevel*Math.max(.35,intensity/.75));source.connect(gain).connect(context.destination);source.start();
+        source.buffer=buffer;
+        // The rendered Songsterr stem already contains note velocity. Do not apply
+        // chart intensity a second time. 2.2x restores the perceived level of the
+        // full synth mix; the limiter controls dense rolls and simultaneous hits.
+        gain.gain.value=Math.max(.0001,2.2*master*laneLevel);source.connect(gain).connect(songBus);source.start();
         lastSongHit={time:noteTime,at:now};return true;
       }
     }
