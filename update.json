@@ -1,7 +1,7 @@
 {
-  "version": "1.5.14",
-  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.5.14.zip",
-  "sha256": "DE11EC90441133AA81B3B32AA92A4390A7EB79058372E61661926EFA58149F14",
+  "version": "1.5.15",
+  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.5.15.zip",
+  "sha256": "DAFA8AD82ABEA7EF1442D9674B80E96AF4DCC5E2247724DB55520C46B67BC56D",
   "minimumChromeVersion": "120",
-  "notes": "提高 Songsterr 該曲合成按鍵音量：移除重複力度衰減，加入 2.2 倍輸出增益與軟限制器，改善滿音量仍偏小並避免密集連打爆音。"
+  "notes": "修正同拍多樂器被錯誤去重：Crash＋Bass Drum 等同時敲擊現在會各自播放並正確疊音，不再遺失第二個樂器聲音。"
 }

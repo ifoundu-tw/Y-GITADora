@@ -14,7 +14,7 @@ globalThis.SDGSongsterrSynth=(()=>{
   };
   const laneMidi={crash:49,hihat:42,hihat_pedal:44,snare:38,high_tom:50,bass_drum:36,medium_tom:47,floor_tom:41,ride:51};
   let context,synth,node,songBus,songLimiter,readyPromise,state='idle',lastError='',songKey='',songState='none';
-  let songPools={},songBuffer=null,lastSongHit={time:null,at:0};
+  let songPools={},songBuffer=null;
 
   function decodeBase64(value){
     const raw=atob(value),bytes=new Uint8Array(raw.length);
@@ -131,8 +131,6 @@ globalThis.SDGSongsterrSynth=(()=>{
   }
   function play(art,lane,intensity=.75,master=1,laneLevel=1,noteTime=null){
     if(songState==='ready'){
-      const now=performance.now();
-      if(noteTime!=null&&lastSongHit.time!=null&&Math.abs(noteTime-lastSongHit.time)<12&&now-lastSongHit.at<90)return true;
       const pool=songPools[art]||songPools[`lane:${lane}`];
       if(pool?.length){
         const buffer=pool[Math.floor(Math.random()*pool.length)],source=context.createBufferSource(),gain=context.createGain();
@@ -141,7 +139,7 @@ globalThis.SDGSongsterrSynth=(()=>{
         // chart intensity a second time. 2.2x restores the perceived level of the
         // full synth mix; the limiter controls dense rolls and simultaneous hits.
         gain.gain.value=Math.max(.0001,2.2*master*laneLevel);source.connect(gain).connect(songBus);source.start();
-        lastSongHit={time:noteTime,at:now};return true;
+        return true;
       }
     }
     if(state!=='ready'){
