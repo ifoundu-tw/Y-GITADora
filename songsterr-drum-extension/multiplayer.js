@@ -17664,7 +17664,7 @@
     async function send(message) {
       if (!mp.roomId) return;
       if (message.type === "signal") return push(ref(db, `rooms/${mp.roomId}/signals/${message.to}`), { from: mp.playerId, data: message.data, createdAt: serverTimestamp() });
-      if (message.type === "ready") return update(ref(db, `rooms/${mp.roomId}/players/${mp.playerId}`), { ready: !!message.ready, readyEpoch: mp.songEpoch, lastSeenAt: serverTimestamp() });
+      if (message.type === "ready") return update(ref(db, `rooms/${mp.roomId}/players/${mp.playerId}`), { ready: !!message.ready, readyEpoch: mp.songEpoch, instrumentMode: message.instrumentMode || null, partId: Number.isInteger(message.partId) ? message.partId : null, chartHash: message.chartHash || null, noteCount: Number(message.noteCount) || 0, lastSeenAt: serverTimestamp() });
       if (message.type === "select-song" && mp.playerId === mp.hostId) return update(ref(db, `rooms/${mp.roomId}/meta`), { song: message.song, songEpoch: mp.songEpoch + 1 });
       if (message.type === "transfer-host" && mp.playerId === mp.hostId) return update(ref(db, `rooms/${mp.roomId}/meta`), { hostId: message.to, hostEpoch: mp.hostEpoch + 1 });
       if (message.type === "start" && mp.playerId === mp.hostId) {
@@ -17782,7 +17782,8 @@
         const direct = self2 || peer?.channel?.readyState === "open";
         const host = player.playerId === mp.hostId;
         const ready = player.ready && Number(player.readyEpoch) === mp.songEpoch;
-        return `<div class="sdg-mp-player"><span>${escapeHtml(player.name)} ${host ? '<b class="sdg-mp-host">HOST</b>' : ""}</span><b class="${direct ? "sdg-mp-ok" : "sdg-mp-wait"}">${self2 ? "\u672C\u6A5F" : direct ? `${peer.ping ?? "--"}ms` : escapeHtml(peer?.stage || "\u76F4\u9023\u4E2D")}</b><small>${ready ? "\u2713 \u5DF2\u6E96\u5099" : "\u5C1A\u672A\u6E96\u5099"}${mp.playerId === mp.hostId && !self2 ? `\u3000<button data-host="${player.playerId}">\u8F49\u8B93\u623F\u4E3B</button>` : ""}</small></div>`;
+        const instrument = player.instrumentMode === "bass" ? "BASS" : player.instrumentMode === "drums" ? "DRUMS" : "--";
+        return `<div class="sdg-mp-player"><span>${escapeHtml(player.name)} ${host ? '<b class="sdg-mp-host">HOST</b>' : ""}</span><b class="${direct ? "sdg-mp-ok" : "sdg-mp-wait"}">${self2 ? "\u672C\u6A5F" : direct ? `${peer.ping ?? "--"}ms` : escapeHtml(peer?.stage || "\u76F4\u9023\u4E2D")}</b><small>${ready ? `\u2713 \u5DF2\u6E96\u5099\u3000${instrument}` : "\u5C1A\u672A\u6E96\u5099"}${mp.playerId === mp.hostId && !self2 ? `\u3000<button data-host="${player.playerId}">\u8F49\u8B93\u623F\u4E3B</button>` : ""}</small></div>`;
       }).join("");
       $mp("#sdg-mp-players").querySelectorAll("[data-host]").forEach((button) => button.onclick = () => send({ type: "transfer-host", to: button.dataset.host }));
       $mp("#sdg-mp-song").disabled = mp.playerId !== mp.hostId;
@@ -17799,15 +17800,15 @@
       return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
     }
     async function currentSongDescriptor() {
-      const { chart, currentMeta, currentPart, songId, currentRevision, originalBpm, targetBpm, requestedPlaybackRate } = gameApi.state();
+      const { chart, currentMeta, currentPart, instrumentMode, songId, currentRevision, originalBpm, targetBpm, requestedPlaybackRate } = gameApi.state();
       if (!chart.length || !currentMeta || !Number.isInteger(currentPart)) throw Error("\u9F13\u8B5C\u5C1A\u672A\u8F09\u5165\u5B8C\u6210");
       const videoId = currentMeta.videos?.find((video) => video.status === "done" && video.videoId)?.videoId;
-      return { songId, revisionId: currentRevision, partId: currentPart, instrumentId: 1024, youtubeVideoId: videoId, title: currentMeta.title, originalBpm, targetBpm, playbackRate: requestedPlaybackRate, noteCount: chart.length, chartHash: await chartHash(), url: `https://www.songsterr.com/a/wsa/song-drum-tab-s${songId}t${currentPart}/r${currentRevision}` };
+      return { songId, revisionId: currentRevision, partId: currentPart, instrumentMode, instrumentId: instrumentMode === "bass" ? 33 : 1024, youtubeVideoId: videoId, title: currentMeta.title, originalBpm, targetBpm, playbackRate: requestedPlaybackRate, noteCount: chart.length, chartHash: await chartHash(), url: `https://www.songsterr.com/a/wsa/song-tab-s${songId}/r${currentRevision}` };
     }
     async function verifyRoomSong() {
       if (!mp.song) return;
-      const { chart, songId, currentRevision, currentPart } = gameApi.state();
-      if (songId !== mp.song.songId || currentRevision !== mp.song.revisionId || currentPart !== mp.song.partId) {
+      const { chart, songId, currentRevision } = gameApi.state();
+      if (songId !== mp.song.songId || currentRevision !== mp.song.revisionId) {
         if (mp.playerId === mp.hostId) {
           status(`\u76EE\u524D\u700F\u89BD\uFF1A${gameApi.state().currentMeta?.title || "\u65B0\u6B4C\u66F2"}\uFF1B\u623F\u9593\u4ECD\u662F\uFF1A${mp.song.title}\u3002\u78BA\u8A8D\u5F8C\u8ACB\u6309\u300C\u540C\u6B65\u76EE\u524D\u6B4C\u66F2\u300D`, "wait");
           return;
@@ -17818,10 +17819,8 @@
         return;
       }
       if (!chart.length) return;
-      const hash = await chartHash();
-      if (hash !== mp.song.chartHash) return status("\u8B5C\u9762\u96DC\u6E4A\u4E0D\u4E00\u81F4\uFF0C\u7121\u6CD5\u6E96\u5099", "error");
       gameApi.applyPlayback(mp.song);
-      status(`\u8B5C\u9762\u4E00\u81F4\uFF1A${mp.song.title}`, "ok");
+      status(`\u6B4C\u66F2\u4E00\u81F4\uFF1A${mp.song.title}\uFF0C\u53EF\u4F7F\u7528\u5404\u81EA\u6A02\u5668\u8B5C`, "ok");
     }
     function allDirect() {
       return mp.players.filter((player) => player.playerId !== mp.playerId).every((player) => mp.peers.get(player.playerId)?.channel?.readyState === "open");
@@ -17869,12 +17868,20 @@
       }
     };
     $mp("#sdg-mp-ready").onclick = async () => {
-      if (!mp.song) return status("\u8ACB\u5148\u7531\u623F\u4E3B\u9078\u6B4C", "error");
-      if (!allDirect()) return status("\u5C1A\u672A\u5B8C\u6210\u6240\u6709\u73A9\u5BB6\u76F4\u9023", "error");
-      if (await chartHash() !== mp.song.chartHash) return status("\u8B5C\u9762\u4E0D\u4E00\u81F4", "error");
-      const me = mp.players.find((player) => player.playerId === mp.playerId);
-      const isReady = me?.ready && Number(me.readyEpoch) === mp.songEpoch;
-      send({ type: "ready", ready: !isReady });
+      try {
+        if (!mp.song) return status("\u8ACB\u5148\u7531\u623F\u4E3B\u9078\u6B4C", "error");
+        if (!allDirect()) return status("\u5C1A\u672A\u5B8C\u6210\u6240\u6709\u73A9\u5BB6\u76F4\u9023", "error");
+        const local = gameApi.state();
+        if (!local.chart.length) return status("\u672C\u6A5F\u8B5C\u9762\u5C1A\u672A\u8F09\u5165", "error");
+        if (local.songId !== mp.song.songId || local.currentRevision !== mp.song.revisionId) return status("\u6B4C\u66F2\u6216\u4FEE\u8A02\u7248\u672C\u4E0D\u4E00\u81F4", "error");
+        const me = mp.players.find((player) => player.playerId === mp.playerId);
+        const isReady = me?.ready && Number(me.readyEpoch) === mp.songEpoch;
+        const ready = !isReady;
+        await send({ type: "ready", ready, instrumentMode: local.instrumentMode, partId: local.currentPart, chartHash: await chartHash(), noteCount: local.chart.length });
+        status(ready ? `\u5DF2\u6E96\u5099\uFF1A${local.instrumentMode === "bass" ? "BASS" : "DRUMS"}` : "\u5DF2\u53D6\u6D88\u6E96\u5099", ready ? "ok" : "wait");
+      } catch (error2) {
+        status(`\u6E96\u5099\u5931\u6557\uFF1A${error2.message}`, "error");
+      }
     };
     $mp("#sdg-mp-start").onclick = () => send({ type: "start" });
     identity().then(async () => {

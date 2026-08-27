@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Songsterr Drum Game Prototype",
-  "version": "1.7.2",
+  "version": "1.7.3",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuvbZk40Zy4mtBElsKN8LREMVmY+5IojRgA0PSui1OH/oNxgAk2W27eQE8QOg1U44xFOH5k4zuWhJfcfVOR+fluu+2RrcJY5pYKXvnBU6yZdTe5bC752JrdC6ghnR7JPsrSVJUVWul5MElg150yG5IjGcLgtEAeOe0bT/x04ynG3rioqcAa4SkSD6GUTpbcUiPtFjUMyHyZyWESRU58WUYP95QHMZ1U/bQG2nB2YLIg+dGhsk8XcWQ/bv/KESy5vE1h91ResiiJdnLQd+M50NAqEnYL2JSSUJSSkLkLkLemMrSG9LeCV6MnzGkUioDVrXZLmw4MKOA3XV9amP3WsqIwIDAQAB",
   "description": "在 Songsterr 鼓譜頁直接疊加節奏遊戲，沿用原聲影片與同步點。",
   "permissions": ["storage", "tabs", "activeTab", "tabCapture"],

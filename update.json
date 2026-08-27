@@ -1,7 +1,7 @@
 {
-  "version": "1.7.2",
-  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.7.2.zip",
-  "sha256": "2DA7B064D13B01D9A750E866B4AF9FF4907A7371037550FE548CDDD92C9BF23D",
+  "version": "1.7.3",
+  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.7.3.zip",
+  "sha256": "C40AEF3375A67FB000F6F3153317BBF885DE19A13F6E8848F07775D969FEFA87",
   "minimumChromeVersion": "120",
-  "notes": "小節尺改為像左側時間尺一樣依實際打擊區定位，緊貼BASS G欄右緣並保留獨立空間；小節數字放大至25px，與SCORE數字同級。"
+  "notes": "修正連線合奏按準備無效：房間改為驗證同歌曲與同修訂，不再要求所有玩家使用相同partId與chartHash；每位玩家可分別以DRUMS或BASS準備，房間名單顯示樂器。遠端BASS命中改用完整演奏鏈合成。"
 }
