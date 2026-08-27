@@ -1,7 +1,7 @@
 {
-  "version": "1.6.8",
-  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.6.8.zip",
-  "sha256": "222BF1AC2040AC98C717DC9C3AF0D09455A2822E8FF3D998B7F17DDF8D78C6BC",
+  "version": "1.6.9",
+  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.6.9.zip",
+  "sha256": "4AB67068AB752266239BF9CFB76AE1AAB7B00347C086AF326D8BA6E4C432BC62",
   "minimumChromeVersion": "120",
-  "notes": "修正 HOLD 在手動、AUTO 與連線等不同命中來源下不移動：統一由共用命中流程建立 HOLD 動畫狀態，沿歌曲時間軸下移並在尾端通過後清除。"
+  "notes": "HOLD 動畫改用主 requestAnimationFrame 與一般音符同步更新，移除 32ms 計時器造成的約 31 FPS 跳動；分數介面改為每 100ms 更新，降低殘影與卡頓。"
 }
