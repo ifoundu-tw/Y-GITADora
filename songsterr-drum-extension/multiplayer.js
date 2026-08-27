@@ -17515,7 +17515,9 @@
       unsubs: [],
       lastStartId: "",
       hostElectionTimer: null,
-      hostElectionFor: null
+      hostElectionFor: null,
+      peerRetryTimers: /* @__PURE__ */ new Map(),
+      peerRetryCounts: /* @__PURE__ */ new Map()
     };
     const panel = document.createElement("section");
     panel.id = "sdg-multiplayer";
@@ -17679,9 +17681,20 @@
       for (const id of mp.peers.keys()) if (!ids.has(id)) dropPeer(id);
     }
     function makePeer(peerId, initiator) {
+      const pendingRetry = mp.peerRetryTimers.get(peerId);
+      if (pendingRetry) clearTimeout(pendingRetry);
+      mp.peerRetryTimers.delete(peerId);
       const pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
-      const peer = { pc, channel: null, ping: null, openedAt: 0, pendingCandidates: [], stage: initiator ? "\u5EFA\u7ACBOffer" : "\u7B49\u5F85Offer" };
+      const attempt = (mp.peerRetryCounts.get(peerId) || 0) + 1;
+      const peer = { pc, channel: null, ping: null, openedAt: 0, pendingCandidates: [], attempt, connectTimer: null, disconnectTimer: null, stage: `${initiator ? "\u5EFA\u7ACBOffer" : "\u7B49\u5F85Offer"} #${attempt}` };
       mp.peers.set(peerId, peer);
+      peer.connectTimer = setTimeout(() => {
+        if (mp.peers.get(peerId) === peer && peer.channel?.readyState !== "open") {
+          peer.stage = `\u5354\u5546\u903E\u6642 #${attempt}\uFF0C\u6E96\u5099\u91CD\u8A66`;
+          renderPlayers();
+          dropPeer(peerId, { retry: true });
+        }
+      }, 12e3);
       pc.onicecandidate = ({ candidate }) => {
         if (!candidate) return;
         peer.stage = "\u4EA4\u63DBICE";
@@ -17693,7 +17706,14 @@
       };
       pc.onconnectionstatechange = () => {
         peer.stage = `\u9023\u7DDA ${pc.connectionState}`;
-        if (["failed", "closed"].includes(pc.connectionState)) dropPeer(peerId);
+        if (pc.connectionState === "connected") mp.peerRetryCounts.delete(peerId);
+        if (pc.connectionState === "failed") return dropPeer(peerId, { retry: true });
+        if (pc.connectionState === "disconnected") {
+          clearTimeout(peer.disconnectTimer);
+          peer.disconnectTimer = setTimeout(() => {
+            if (mp.peers.get(peerId) === peer && pc.connectionState !== "connected") dropPeer(peerId, { retry: true });
+          }, 3500);
+        }
         renderPlayers();
       };
       pc.oniceconnectionstatechange = () => {
@@ -17737,12 +17757,18 @@
       if (!peer) return;
       peer.channel = channel;
       channel.onopen = () => {
+        clearTimeout(peer.connectTimer);
+        clearTimeout(peer.disconnectTimer);
+        mp.peerRetryCounts.delete(peerId);
         peer.openedAt = Date.now();
         peer.stage = "DataChannel\u5DF2\u958B\u555F";
         renderPlayers();
         pingPeer(peerId);
       };
-      channel.onclose = renderPlayers;
+      channel.onclose = () => {
+        renderPlayers();
+        if (mp.roomId && mp.players.some((player) => player.playerId === peerId)) schedulePeerRetry(peerId);
+      };
       channel.onmessage = ({ data }) => onPeer(peerId, JSON.parse(data));
     }
     function pingPeer(peerId) {
@@ -17761,18 +17787,39 @@
       }
       if (message.type === "hit") receiveHit(message);
     }
-    function dropPeer(peerId) {
-      const peer = mp.peers.get(peerId);
-      if (!peer) return;
-      try {
-        peer.channel?.close();
-        peer.pc.close();
-      } catch {
-      }
-      mp.peers.delete(peerId);
+    function schedulePeerRetry(peerId) {
+      if (!mp.roomId || peerId === mp.playerId || !mp.players.some((player) => player.playerId === peerId) || mp.peerRetryTimers.has(peerId)) return;
+      const count = (mp.peerRetryCounts.get(peerId) || 0) + 1;
+      mp.peerRetryCounts.set(peerId, count);
+      const delay = Math.min(8e3, 800 * 2 ** Math.min(count - 1, 3));
+      const timer = setTimeout(() => {
+        mp.peerRetryTimers.delete(peerId);
+        if (!mp.peers.has(peerId) && mp.roomId && mp.players.some((player) => player.playerId === peerId)) makePeer(peerId, mp.playerId < peerId);
+      }, delay);
+      mp.peerRetryTimers.set(peerId, timer);
       renderPlayers();
     }
+    function dropPeer(peerId, { retry = false } = {}) {
+      const peer = mp.peers.get(peerId);
+      if (peer) {
+        clearTimeout(peer.connectTimer);
+        clearTimeout(peer.disconnectTimer);
+        try {
+          if (peer.channel) peer.channel.onclose = null;
+          peer.pc.onconnectionstatechange = null;
+          peer.channel?.close();
+          peer.pc.close();
+        } catch {
+        }
+        mp.peers.delete(peerId);
+      }
+      renderPlayers();
+      if (retry) schedulePeerRetry(peerId);
+    }
     function closePeers() {
+      for (const timer of mp.peerRetryTimers.values()) clearTimeout(timer);
+      mp.peerRetryTimers.clear();
+      mp.peerRetryCounts.clear();
       for (const id of [...mp.peers.keys()]) dropPeer(id);
     }
     function renderPlayers() {
@@ -17783,7 +17830,8 @@
         const host = player.playerId === mp.hostId;
         const ready = player.ready && Number(player.readyEpoch) === mp.songEpoch;
         const instrument = player.instrumentMode === "bass" ? "BASS" : player.instrumentMode === "drums" ? "DRUMS" : "--";
-        return `<div class="sdg-mp-player"><span>${escapeHtml(player.name)} ${host ? '<b class="sdg-mp-host">HOST</b>' : ""}</span><b class="${direct ? "sdg-mp-ok" : "sdg-mp-wait"}">${self2 ? "\u672C\u6A5F" : direct ? `${peer.ping ?? "--"}ms` : escapeHtml(peer?.stage || "\u76F4\u9023\u4E2D")}</b><small>${ready ? `\u2713 \u5DF2\u6E96\u5099\u3000${instrument}` : "\u5C1A\u672A\u6E96\u5099"}${mp.playerId === mp.hostId && !self2 ? `\u3000<button data-host="${player.playerId}">\u8F49\u8B93\u623F\u4E3B</button>` : ""}</small></div>`;
+        const retry = mp.peerRetryCounts.get(player.playerId) || 0;
+        return `<div class="sdg-mp-player"><span>${escapeHtml(player.name)} ${host ? '<b class="sdg-mp-host">HOST</b>' : ""}</span><b class="${direct ? "sdg-mp-ok" : "sdg-mp-wait"}">${self2 ? "\u672C\u6A5F" : direct ? `${peer.ping ?? "--"}ms` : escapeHtml(peer?.stage || (retry ? `\u76F4\u9023\u91CD\u8A66 #${retry}` : "\u76F4\u9023\u4E2D"))}</b><small>${ready ? `\u2713 \u5DF2\u6E96\u5099\u3000${instrument}` : "\u5C1A\u672A\u6E96\u5099"}${mp.playerId === mp.hostId && !self2 ? `\u3000<button data-host="${player.playerId}">\u8F49\u8B93\u623F\u4E3B</button>` : ""}</small></div>`;
       }).join("");
       $mp("#sdg-mp-players").querySelectorAll("[data-host]").forEach((button) => button.onclick = () => send({ type: "transfer-host", to: button.dataset.host }));
       $mp("#sdg-mp-song").disabled = mp.playerId !== mp.hostId;

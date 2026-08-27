@@ -1,7 +1,7 @@
 {
-  "version": "1.7.3",
-  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.7.3.zip",
-  "sha256": "C40AEF3375A67FB000F6F3153317BBF885DE19A13F6E8848F07775D969FEFA87",
+  "version": "1.7.4",
+  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.7.4.zip",
+  "sha256": "EF47C8723BAEC2F18B62663B4F968E237696750F52C50429AAFF30F8DCF51819",
   "minimumChromeVersion": "120",
-  "notes": "修正連線合奏按準備無效：房間改為驗證同歌曲與同修訂，不再要求所有玩家使用相同partId與chartHash；每位玩家可分別以DRUMS或BASS準備，房間名單顯示樂器。遠端BASS命中改用完整演奏鏈合成。"
+  "notes": "修正WebRTC協商失敗後永久卡在直連中：加入12秒協商逾時、ICE失敗／短暫斷線自動重建、指數退避重試，並在玩家狀態顯示Offer、ICE與重試次數。"
 }
