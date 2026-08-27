@@ -1,7 +1,7 @@
 {
-  "version": "1.6.7",
-  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.6.7.zip",
-  "sha256": "81D8E0B792166E2EAF64D6936E1305A91A5B2D286B070B4F5725595DD4BB56A5",
+  "version": "1.6.8",
+  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.6.8.zip",
+  "sha256": "222BF1AC2040AC98C717DC9C3AF0D09455A2822E8FF3D998B7F17DDF8D78C6BC",
   "minimumChromeVersion": "120",
-  "notes": "修正 BASS HOLD 命中後拆成移動光標與固定殘影：移除判定線釘選座標，命中後整條 HOLD 只沿原時間軸繼續向下，尾端通過後刪除。"
+  "notes": "修正 HOLD 在手動、AUTO 與連線等不同命中來源下不移動：統一由共用命中流程建立 HOLD 動畫狀態，沿歌曲時間軸下移並在尾端通過後清除。"
 }
