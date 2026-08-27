@@ -1,7 +1,7 @@
 {
-  "version": "1.6.9",
-  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.6.9.zip",
-  "sha256": "4AB67068AB752266239BF9CFB76AE1AAB7B00347C086AF326D8BA6E4C432BC62",
+  "version": "1.7.0",
+  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.7.0.zip",
+  "sha256": "5C2A27F2A2709841A6AF1E5801283C1DD0D4FF3C154AA0600CC9CB2B1503F40C",
   "minimumChromeVersion": "120",
-  "notes": "HOLD 動畫改用主 requestAnimationFrame 與一般音符同步更新，移除 32ms 計時器造成的約 31 FPS 跳動；分數介面改為每 100ms 更新，降低殘影與卡頓。"
+  "notes": "BASS 演奏鏈第一版：整譜預先解析 Tie、Legato／Shift與Downwards；Tie不重複起音，Legato自動滑至同弦目標音，Slide Out尾段下滑。每次撥弦使用獨立MIDI channel，同音連打不再互相切斷；PERFECT／GREAT播放完整鏈，GOOD／OK縮短。"
 }
