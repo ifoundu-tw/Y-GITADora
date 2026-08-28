@@ -17521,7 +17521,7 @@
       diagnostics: [],
       firebaseConnected: false,
       hitUnsub: null,
-      hitCleanupTimer: null,
+      maintenanceTimer: null,
       hitSequence: 0
     };
     const panel = document.createElement("section");
@@ -17592,8 +17592,8 @@
       closePeers();
       if (mp.hitUnsub) mp.hitUnsub();
       mp.hitUnsub = null;
-      if (mp.hitCleanupTimer) clearTimeout(mp.hitCleanupTimer);
-      mp.hitCleanupTimer = null;
+      if (mp.maintenanceTimer) clearInterval(mp.maintenanceTimer);
+      mp.maintenanceTimer = null;
       for (const unsub of mp.unsubs.splice(0)) try {
         unsub();
       } catch {
@@ -17623,6 +17623,9 @@
       if (!existingPlayers.hasChild(mp.playerId) && existingPlayers.size >= 4) throw Error("\u623F\u9593\u5DF2\u6EFF");
       await set(playerRef, { name: mp.name, ready: false, readyEpoch: 0, joinedAt: Date.now(), lastSeenAt: serverTimestamp() });
       await onDisconnect(playerRef).remove();
+      const roomActivityRef = ref(db, `maintenance/rooms/${roomId}/lastActiveAt`);
+      await set(roomActivityRef, serverTimestamp());
+      await onDisconnect(roomActivityRef).set(serverTimestamp());
       mp.unsubs.push(onValue(ref(db, ".info/serverTimeOffset"), (snapshot) => {
         mp.serverOffset = Number(snapshot.val()) || 0;
       }));
@@ -17640,15 +17643,14 @@
       mp.unsubs.push(onValue(ref(db, `rooms/${roomId}/commands/start`), (snapshot) => {
         const command = snapshot.val();
         if (!command?.id || command.id === mp.lastStartId) return;
-        const previousStartId = mp.lastStartId;
         mp.lastStartId = command.id;
         subscribeHits(command.id);
-        if (previousStartId && mp.playerId === mp.hostId) remove(ref(db, `rooms/${mp.roomId}/hits/${previousStartId}`)).catch(() => {
-        });
         beginSynchronized(command.serverStartAt);
       }));
       status("\u5DF2\u9032\u623F\uFF0CFirebase \u5408\u594F\u901A\u9053\u5DF2\u9023\u7DDA", "ok");
       chrome.storage.local.set({ sdgMultiplayerResume: { roomId, name: mp.name, savedAt: Date.now() } });
+      setTimeout(runMaintenance, 500 + Math.random() * 1500);
+      mp.maintenanceTimer = setInterval(runMaintenance, 5 * 60 * 1e3 + Math.random() * 15e3);
     }
     function onMeta(meta) {
       if (!meta) return;
@@ -17706,8 +17708,38 @@
       if (message.type === "start" && mp.playerId === mp.hostId) {
         const allReady = mp.players.length >= 2 && mp.players.every((player) => player.ready && Number(player.readyEpoch) === mp.songEpoch);
         if (!allReady) return status("\u4ECD\u6709\u73A9\u5BB6\u5C1A\u672A\u6E96\u5099", "error");
-        return set(ref(db, `rooms/${mp.roomId}/commands/start`), { id: crypto.randomUUID(), hostId: mp.playerId, hostEpoch: mp.hostEpoch, serverStartAt: Date.now() + mp.serverOffset + 5e3 });
+        const id = crypto.randomUUID();
+        const serverStartAt = Date.now() + mp.serverOffset + 5e3;
+        const chartEndMs = Math.max(0, ...gameApi.state().chart.map((note) => Number(note.time_ms || 0) + Number(note.duration_ms || 0)));
+        const expiresAt = serverStartAt + chartEndMs / Math.max(0.25, gameApi.state().actualPlaybackRate) + 3e4;
+        return update(ref(db), { [`rooms/${mp.roomId}/commands/start`]: { id, hostId: mp.playerId, hostEpoch: mp.hostEpoch, serverStartAt, expiresAt }, [`rooms/${mp.roomId}/hitSessions/${id}`]: { expiresAt, createdAt: serverTimestamp() }, [`rooms/${mp.roomId}/meta/lastActiveAt`]: serverTimestamp(), [`maintenance/hitSessions/${mp.roomId}/${id}`]: expiresAt, [`maintenance/rooms/${mp.roomId}/lastActiveAt`]: serverTimestamp() });
       }
+    }
+    async function runMaintenance() {
+      if (!mp.firebaseConnected || !mp.playerId) return;
+      const now = Date.now() + mp.serverOffset;
+      const leaseRef = ref(db, "maintenance/cleanupLease");
+      const lease = await runTransaction(leaseRef, (current) => !current || Number(current.until) < now ? { holder: mp.playerId, until: now + 5 * 60 * 1e3 } : void 0).catch(() => null);
+      if (!lease?.committed || lease.snapshot.val()?.holder !== mp.playerId) return;
+      const [sessionsSnapshot, roomsSnapshot] = await Promise.all([get(ref(db, "maintenance/hitSessions")), get(ref(db, "maintenance/rooms"))]);
+      const updates = {};
+      for (const [roomId, sessions] of Object.entries(sessionsSnapshot.val() || {})) {
+        for (const [startId, expiresAt] of Object.entries(sessions || {})) {
+          if (Number(expiresAt) > now) continue;
+          updates[`rooms/${roomId}/hits/${startId}`] = null;
+          updates[`rooms/${roomId}/hitSessions/${startId}`] = null;
+          updates[`maintenance/hitSessions/${roomId}/${startId}`] = null;
+        }
+      }
+      for (const [roomId, roomActivity] of Object.entries(roomsSnapshot.val() || {})) {
+        if (now - Number(roomActivity?.lastActiveAt || 0) < 10 * 60 * 1e3) continue;
+        const playersSnapshot = await get(ref(db, `rooms/${roomId}/players`));
+        if (playersSnapshot.exists()) continue;
+        updates[`rooms/${roomId}`] = null;
+        updates[`maintenance/rooms/${roomId}`] = null;
+        updates[`maintenance/hitSessions/${roomId}`] = null;
+      }
+      if (Object.keys(updates).length) await update(ref(db), updates);
     }
     function reconcilePeers() {
       const ids = new Set(mp.players.map((player) => player.playerId).filter((id) => id !== mp.playerId));
@@ -17965,13 +17997,6 @@
         gameApi.startOnline(`ONLINE \xB7 ${mp.roomId} \xB7 \u88DC\u511F ${Math.round(measured.lastStartCompMs)}ms${measured.confirmed ? "" : "*"}`);
         status("\u5408\u594F\u9032\u884C\u4E2D", "ok");
       }, Math.max(0, localStartAt - Date.now()));
-      if (mp.playerId === mp.hostId) {
-        const endMs = Math.max(0, ...gameApi.state().chart.map((note) => Number(note.time_ms || 0) + Number(note.duration_ms || 0))) + 3e4;
-        if (mp.hitCleanupTimer) clearTimeout(mp.hitCleanupTimer);
-        const startId = mp.lastStartId;
-        mp.hitCleanupTimer = setTimeout(() => remove(ref(db, `rooms/${mp.roomId}/hits/${startId}`)).catch(() => {
-        }), Math.max(3e4, endMs / Math.max(0.25, gameApi.state().actualPlaybackRate)));
-      }
     }
     function subscribeHits(startId) {
       if (mp.hitUnsub) mp.hitUnsub();

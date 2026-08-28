@@ -5,6 +5,7 @@
     "rooms": {
       "$roomId": {
         ".read": "auth != null",
+        ".write": "auth != null && !newData.exists() && !data.child('players').exists() && ((!root.child('maintenance').child('rooms').child($roomId).child('lastActiveAt').exists() && data.child('meta').child('createdAt').val() <= now - 600000) || root.child('maintenance').child('rooms').child($roomId).child('lastActiveAt').val() <= now - 600000)",
         "meta": {
           ".write": "auth != null && ((!data.exists() && newData.child('hostId').val() === auth.uid) || data.child('hostId').val() === auth.uid || (!root.child('rooms').child($roomId).child('players').child(data.child('hostId').val()).exists() && newData.child('hostEpoch').val() === data.child('hostEpoch').val() + 1))",
           ".validate": "newData.hasChildren(['hostId','hostEpoch','createdAt'])"
@@ -25,6 +26,42 @@
         },
         "commands": {
           ".write": "auth != null && root.child('rooms').child($roomId).child('meta').child('hostId').val() === auth.uid"
+        },
+        "hitSessions": {
+          "$startId": {
+            ".write": "auth != null && (root.child('rooms').child($roomId).child('meta').child('hostId').val() === auth.uid || (!newData.exists() && data.child('expiresAt').val() <= now))",
+            ".validate": "!newData.exists() || newData.hasChildren(['expiresAt','createdAt'])"
+          }
+        },
+        "hits": {
+          "$startId": {
+            ".write": "auth != null && !newData.exists() && root.child('rooms').child($roomId).child('hitSessions').child($startId).child('expiresAt').val() <= now",
+            "$eventId": {
+              ".write": "auth != null && !data.exists() && root.child('rooms').child($roomId).child('players').child(auth.uid).exists() && newData.child('s').val() === auth.uid",
+              ".validate": "newData.hasChildren(['s','q','t','i','l','x','j'])"
+            }
+          }
+        }
+      }
+    },
+    "maintenance": {
+      ".read": "auth != null",
+      "cleanupLease": {
+        ".write": "auth != null && newData.hasChildren(['holder','until']) && newData.child('holder').val() === auth.uid && newData.child('until').val() <= now + 300000 && (!data.exists() || data.child('until').val() < now || data.child('holder').val() === auth.uid)"
+      },
+      "hitSessions": {
+        "$roomId": {
+          "$startId": {
+            ".write": "auth != null && ((newData.isNumber() && root.child('rooms').child($roomId).child('meta').child('hostId').val() === auth.uid) || (!newData.exists() && data.val() <= now))"
+          }
+        }
+      },
+      "rooms": {
+        "$roomId": {
+          "lastActiveAt": {
+            ".write": "auth != null && newData.isNumber() && newData.val() <= now + 10000"
+          },
+          ".write": "auth != null && !newData.exists() && data.child('lastActiveAt').val() <= now - 600000 && !root.child('rooms').child($roomId).child('players').exists()"
         }
       }
     }

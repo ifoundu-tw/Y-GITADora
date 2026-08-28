@@ -1,7 +1,7 @@
 {
-  "version": "1.8.0",
-  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.8.0.zip",
-  "sha256": "A11CC85F00D0802C000C9C338F7D9821791366D4F124957D02039DD67AE41F57",
+  "version": "1.8.1",
+  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.8.1.zip",
+  "sha256": "B8C358B6A254FABD5AF92B74BFD331996EB74249CC77EEE631FDF165F373376D",
   "minimumChromeVersion": "120",
-  "notes": "最佳化Firebase即時合奏：每局獨立即時通道，打擊只寫入一次、不逐筆刪除、不在線時直接放棄；遠端收到即播，下一局或歌曲結束由房主一次整批清除。"
+  "notes": "免費Firebase清理機制：在線玩家每5分鐘競爭全域清理鎖，僅一人讀取精簡索引，清除已過expiresAt的hit session與無人超過10分鐘的房間；不依賴房主、不需Cloud Functions。"
 }
