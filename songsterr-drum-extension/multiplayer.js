@@ -18051,12 +18051,12 @@
       mp.hitUnsub = onChildAdded(ref(db, `rooms/${mp.roomId}/hits/${startId}`), (snapshot) => {
         const packet = snapshot.val();
         if (!packet || packet.s === mp.playerId) return;
-        receiveHit({ senderId: packet.s, sentAt: packet.c, songTimeMs: packet.t, instrumentMode: packet.i, partId: packet.r, lane: packet.l, articulation: packet.a || null, midi: packet.m, velocity: packet.v, duration_ms: packet.d, performance: packet.p || null, intensity: packet.x, judgment: packet.j });
+        receiveHit({ senderId: packet.s, sentAt: packet.c, action: packet.o || null, voiceKey: packet.k || null, auto: !!packet.u, songTimeMs: packet.t, instrumentMode: packet.i, partId: packet.r, lane: packet.l, articulation: packet.a || null, midi: packet.m, velocity: packet.v, duration_ms: packet.d, performance: packet.p || null, intensity: packet.x, judgment: packet.j });
       });
     }
     function broadcastHit(event) {
       if (!mp.roomId || !mp.lastStartId || !mp.firebaseConnected || !gameApi.isStarted()) return;
-      const packet = { s: mp.playerId, q: ++mp.hitSequence, c: Math.round(Date.now() + mp.serverOffset), t: Math.round(event.songTimeMs), i: event.instrumentMode || "drums", r: event.partId ?? null, l: event.lane || null, a: event.articulation || null, m: event.midi ?? null, v: event.velocity ?? null, d: event.duration_ms ?? 0, p: event.performance || null, x: event.intensity ?? 0.75, j: event.judgment || "PERFECT" };
+      const packet = { s: mp.playerId, q: ++mp.hitSequence, c: Math.round(Date.now() + mp.serverOffset), o: event.action || null, k: event.voiceKey || null, u: !!event.auto, t: Math.round(event.songTimeMs), i: event.instrumentMode || "drums", r: event.partId ?? null, l: event.lane || null, a: event.articulation || null, m: event.midi ?? null, v: event.velocity ?? null, d: event.duration_ms ?? 0, p: event.performance || null, x: event.intensity ?? 0.75, j: event.judgment || "PERFECT" };
       set(push(ref(db, `rooms/${mp.roomId}/hits/${mp.lastStartId}`)), packet).catch((error2) => diagnostic("FIREBASE_HIT_ERROR", "", error2.message));
     }
     function receiveHit(event) {
@@ -18072,7 +18072,7 @@
       const synthState = event.instrumentMode === "bass" ? globalThis.SDGBassSynth?.getState?.().state || "missing" : "drums-ready";
       if (networkMs <= mp.remoteDeadlineMs && event.remoteGain > 0) {
         mp.remoteStats.played++;
-        const result = gameApi.remoteHit(event);
+        const result = event.action === "bass_input" ? gameApi.remoteBassInput?.(event) : event.action === "bass_performance" ? gameApi.remoteBassPerformance?.(event) : event.action === "bass_release" ? gameApi.remoteBassRelease?.(event) : gameApi.remoteHit(event);
         diagnostic("REMOTE_HIT", event.senderId, `instrument=${event.instrumentMode} network=${Math.round(networkMs)}ms songLate=${Math.round(lateBy)}ms synth=${synthState} gain=${event.remoteGain.toFixed(2)} result=${result ?? "sent"}`);
       } else {
         mp.remoteStats.dropped++;

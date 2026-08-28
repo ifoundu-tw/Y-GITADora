@@ -1,7 +1,7 @@
 {
-  "version": "1.8.2",
-  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.8.2.zip",
-  "sha256": "38F9AA99B7905C507D4523196BBE6F4B4B408ED28DA43B9617DA3994AA61D249",
+  "version": "1.8.3",
+  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.8.3.zip",
+  "sha256": "A60FC8D78D5C7E18A68D3E0CBF48CCD4EBE22EA04E163ED43EFC9F2291279C2A",
   "minimumChromeVersion": "120",
-  "notes": "跨樂器合奏診斷版：遠端期限預設250ms、收到即播；背景預載BASS音源，新增延遲／播放／丟棄／音源狀態LOG、隊友總音量及各玩家音量靜音；房號改為4位純數字。"
+  "notes": "BASS可升級Voice：每次撥弦先立即播放實際單音，正確命中升級同一Voice的HOLD與滑音，失誤音按住可延續、放開阻尼收尾；空拍即興與AUTO皆同步給隊友，遠端重建Input／Performance／Release生命週期。"
 }
