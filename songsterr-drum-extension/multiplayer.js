@@ -17704,19 +17704,23 @@
       mp.peerRetryTimers.delete(peerId);
       const pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
       const attempt = (mp.peerRetryCounts.get(peerId) || 0) + 1;
-      const peer = { pc, channel: null, ping: null, openedAt: 0, pendingCandidates: [], attempt, initiator, negotiationId: initiator ? crypto.randomUUID() : null, connectTimer: null, disconnectTimer: null, stage: `${initiator ? "\u5EFA\u7ACBOffer" : "\u7B49\u5F85Offer"} #${attempt}` };
+      const peer = { pc, channel: null, ping: null, openedAt: 0, pendingCandidates: [], attempt, initiator, negotiationId: initiator ? crypto.randomUUID() : null, createdAt: Date.now(), connectTimer: null, disconnectTimer: null, stage: `${initiator ? "\u5EFA\u7ACBOffer" : "\u7B49\u5F85Offer"} #${attempt}` };
       mp.peers.set(peerId, peer);
       diagnostic("PEER_CREATE", peerId, `attempt=${attempt} role=${initiator ? "offerer" : "answerer"} nid=${shortId(peer.negotiationId)}`);
       peer.connectTimer = setTimeout(() => {
         if (mp.peers.get(peerId) === peer && peer.channel?.readyState !== "open") {
-          peer.stage = `\u5354\u5546\u903E\u6642 #${attempt}\uFF0C\u6E96\u5099\u91CD\u8A66`;
+          peer.stage = initiator ? `\u5354\u5546\u903E\u6642 #${attempt}\uFF0C\u6E96\u5099\u91CD\u8A66` : `\u7B49\u5F85Offer\u7AEF\u91CD\u5EFA #${attempt}`;
           diagnostic("TIMEOUT", peerId, `signal=${pc.signalingState} ice=${pc.iceConnectionState} connection=${pc.connectionState}`);
           renderPlayers();
-          dropPeer(peerId, { retry: true });
+          if (initiator) dropPeer(peerId, { retry: true });
         }
-      }, 12e3);
+      }, 30e3);
       pc.onicecandidate = ({ candidate }) => {
-        if (!candidate) return;
+        if (!candidate) {
+          diagnostic("ICE_GATHERING_DONE", peerId, `state=${pc.iceGatheringState}`);
+          return;
+        }
+        diagnostic("SEND_ICE", peerId, `type=${candidate.type || "unknown"} protocol=${candidate.protocol || "-"} nid=${shortId(peer.negotiationId)}`);
         peer.stage = "\u4EA4\u63DBICE";
         renderPlayers();
         send({ type: "signal", to: peerId, data: { candidate: candidate.toJSON?.() || candidate, negotiationId: peer.negotiationId } }).catch((error2) => {
@@ -17728,11 +17732,11 @@
         peer.stage = `\u9023\u7DDA ${pc.connectionState}`;
         diagnostic("CONNECTION", peerId, `value=${pc.connectionState} signal=${pc.signalingState} ice=${pc.iceConnectionState}`);
         if (pc.connectionState === "connected") mp.peerRetryCounts.delete(peerId);
-        if (pc.connectionState === "failed") return dropPeer(peerId, { retry: true });
+        if (pc.connectionState === "failed") return dropPeer(peerId, { retry: peer.initiator });
         if (pc.connectionState === "disconnected") {
           clearTimeout(peer.disconnectTimer);
           peer.disconnectTimer = setTimeout(() => {
-            if (mp.peers.get(peerId) === peer && pc.connectionState !== "connected") dropPeer(peerId, { retry: true });
+            if (mp.peers.get(peerId) === peer && pc.connectionState !== "connected") dropPeer(peerId, { retry: peer.initiator });
           }, 3500);
         }
         renderPlayers();
@@ -17745,14 +17749,11 @@
       pc.ondatachannel = ({ channel }) => attachChannel(peerId, channel);
       if (initiator) {
         attachChannel(peerId, pc.createDataChannel("drums", { ordered: false, maxRetransmits: 0 }));
-        pc.createOffer().then((offer) => pc.setLocalDescription(offer)).then(() => send({ type: "signal", to: peerId, data: { description: pc.localDescription.toJSON?.() || pc.localDescription, negotiationId: peer.negotiationId } })).catch((error2) => {
+        pc.createOffer().then((offer) => pc.setLocalDescription(offer)).then(() => {
+          diagnostic("SEND_OFFER", peerId, `nid=${shortId(peer.negotiationId)} signal=${pc.signalingState}`);
+          return send({ type: "signal", to: peerId, data: { description: pc.localDescription.toJSON?.() || pc.localDescription, negotiationId: peer.negotiationId } });
+        }).catch((error2) => {
           peer.stage = `Offer\u932F\u8AA4 ${error2.message}`;
-          renderPlayers();
-        });
-      } else if (attempt > 1) {
-        peer.stage = `\u7B49\u5F85Offer #${attempt}\uFF0C\u5DF2\u8981\u6C42\u5C0D\u65B9\u91CD\u5EFA`;
-        send({ type: "signal", to: peerId, data: { restart: true, requestedBy: mp.playerId, attempt, nonce: crypto.randomUUID() } }).catch((error2) => {
-          peer.stage = `\u91CD\u5EFA\u8ACB\u6C42\u5931\u6557 ${error2.message}`;
           renderPlayers();
         });
       }
@@ -17762,6 +17763,11 @@
       if (data.restart) {
         diagnostic("RECV_RESTART", peerId, `attempt=${data.attempt || "-"}`);
         if (mp.playerId < peerId) {
+          const current = mp.peers.get(peerId);
+          if (current?.initiator && Date.now() - current.createdAt < 1e4 && ["new", "have-local-offer"].includes(current.pc.signalingState)) {
+            diagnostic("IGNORE_RESTART", peerId, `signal=${current.pc.signalingState} age=${Date.now() - current.createdAt}ms`);
+            return;
+          }
           dropPeer(peerId);
           makePeer(peerId, true);
         }
@@ -17791,6 +17797,7 @@
           for (const pending of peer.pendingCandidates.splice(0)) if (!pending.negotiationId || pending.negotiationId === peer.negotiationId) await pc.addIceCandidate(pending.candidate);
           if (type === "offer") {
             await pc.setLocalDescription(await pc.createAnswer());
+            diagnostic("SEND_ANSWER", peerId, `nid=${shortId(peer.negotiationId)} signal=${pc.signalingState}`);
             send({ type: "signal", to: peerId, data: { description: pc.localDescription.toJSON?.() || pc.localDescription, negotiationId: peer.negotiationId } });
           }
         } else if (data.candidate) {
@@ -17822,8 +17829,8 @@
       };
       channel.onclose = () => {
         diagnostic("CHANNEL_CLOSE", peerId, `connection=${peer.pc.connectionState} ice=${peer.pc.iceConnectionState}`);
-        renderPlayers();
-        if (mp.roomId && mp.players.some((player) => player.playerId === peerId)) schedulePeerRetry(peerId);
+        if (mp.roomId && mp.players.some((player) => player.playerId === peerId)) dropPeer(peerId, { retry: peer.initiator });
+        else renderPlayers();
       };
       channel.onmessage = ({ data }) => onPeer(peerId, JSON.parse(data));
     }

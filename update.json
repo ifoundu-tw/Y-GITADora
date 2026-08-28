@@ -1,7 +1,7 @@
 {
-  "version": "1.7.7",
-  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.7.7.zip",
-  "sha256": "749670B145F178930FBCF1A35F69C72F336AD7A2011863462A98C172D4A62564",
+  "version": "1.7.8",
+  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.7.8.zip",
+  "sha256": "CE7BF8485750C8B98264D447A413E6F5FE3E6F21F83A1075FBD330476FB654B8",
   "minimumChromeVersion": "120",
-  "notes": "加入連線診斷LOG與一鍵複製：記錄每位玩家的協商輪次、Offer/Answer、signalingState、ICE與連線狀態、重試原因，以及被忽略的過期訊號。"
+  "notes": "修正雙方同時重試造成的協商競爭：改由Offer端單獨主導重建，ICE等待延長至30秒；補充Offer、Answer與ICE候選類型診斷。"
 }
