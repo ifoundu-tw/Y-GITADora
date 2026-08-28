@@ -17526,6 +17526,8 @@
       teammateVolume: 100,
       remoteDeadlineMs: 250,
       playerVolumes: {},
+      playerRef: null,
+      presenceRepairing: null,
       remoteStats: { received: 0, played: 0, dropped: 0, totalMs: 0, maxMs: 0 }
     };
     const panel = document.createElement("section");
@@ -17654,6 +17656,7 @@
       $mp("#sdg-mp-room").value = roomId;
       status("\u9023\u63A5Firebase\u623F\u9593\u2026", "wait");
       const playersRef = ref(db, `rooms/${roomId}/players`), playerRef = ref(db, `rooms/${roomId}/players/${mp.playerId}`);
+      mp.playerRef = playerRef;
       const existingPlayers = await get(playersRef);
       if (!existingPlayers.hasChild(mp.playerId) && existingPlayers.size >= 4) throw Error("\u623F\u9593\u5DF2\u6EFF");
       await set(playerRef, { name: mp.name, ready: false, readyEpoch: 0, joinedAt: Date.now(), lastSeenAt: serverTimestamp() });
@@ -17701,11 +17704,26 @@
     }
     async function onPlayers(value) {
       mp.players = Object.entries(value).map(([playerId, player]) => ({ playerId, ...player }));
+      if (mp.roomId && mp.playerId && !value[mp.playerId]) ensurePlayerPresence().catch((error2) => diagnostic("PRESENCE_REPAIR_ERROR", "", error2.message));
       if (mp.hostId && !value[mp.hostId] && mp.players.length) scheduleHostElection(mp.hostId);
       else cancelHostElection();
       closePeers();
       renderPlayers();
       if (mp.players.some((player) => player.instrumentMode === "bass")) preloadBassSynth();
+    }
+    async function ensurePlayerPresence() {
+      if (!mp.roomId || !mp.playerId) return false;
+      if (mp.presenceRepairing) return mp.presenceRepairing;
+      mp.presenceRepairing = (async () => {
+        const playerRef = ref(db, `rooms/${mp.roomId}/players/${mp.playerId}`);
+        mp.playerRef = playerRef;
+        const local = gameApi.state();
+        await set(playerRef, { name: mp.name, ready: gameApi.isStarted(), readyEpoch: mp.songEpoch, instrumentMode: local.instrumentMode || null, partId: Number.isInteger(local.currentPart) ? local.currentPart : null, joinedAt: Date.now(), lastSeenAt: serverTimestamp() });
+        await onDisconnect(playerRef).remove();
+        diagnostic("PRESENCE_REPAIRED", "", `room=${mp.roomId}`);
+        return true;
+      })().finally(() => mp.presenceRepairing = null);
+      return mp.presenceRepairing;
     }
     function cancelHostElection() {
       if (mp.hostElectionTimer) clearTimeout(mp.hostElectionTimer);
@@ -18057,7 +18075,17 @@
     function broadcastHit(event) {
       if (!mp.roomId || !mp.lastStartId || !mp.firebaseConnected || !gameApi.isStarted()) return;
       const packet = { s: mp.playerId, q: ++mp.hitSequence, c: Math.round(Date.now() + mp.serverOffset), o: event.action || null, k: event.voiceKey || null, u: !!event.auto, t: Math.round(event.songTimeMs), i: event.instrumentMode || "drums", r: event.partId ?? null, l: event.lane || null, a: event.articulation || null, m: event.midi ?? null, v: event.velocity ?? null, d: event.duration_ms ?? 0, p: event.performance || null, x: event.intensity ?? 0.75, j: event.judgment || "PERFECT" };
-      set(push(ref(db, `rooms/${mp.roomId}/hits/${mp.lastStartId}`)), packet).catch((error2) => diagnostic("FIREBASE_HIT_ERROR", "", error2.message));
+      writeHitPacket(packet, true);
+    }
+    async function writeHitPacket(packet, allowRepair) {
+      try {
+        await set(push(ref(db, `rooms/${mp.roomId}/hits/${mp.lastStartId}`)), packet);
+      } catch (error2) {
+        diagnostic("FIREBASE_HIT_ERROR", "", error2.message);
+        if (!allowRepair || !/permission_denied/i.test(String(error2.code || error2.message))) return;
+        await ensurePlayerPresence();
+        if (Date.now() + mp.serverOffset - packet.c <= mp.remoteDeadlineMs) writeHitPacket(packet, false);
+      }
     }
     function receiveHit(event) {
       if (!gameApi.isStarted() || !Number.isFinite(event.songTimeMs)) return;
