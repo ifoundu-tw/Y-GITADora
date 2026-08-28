@@ -17727,10 +17727,23 @@
           peer.stage = `Offer\u932F\u8AA4 ${error2.message}`;
           renderPlayers();
         });
+      } else if (attempt > 1) {
+        peer.stage = `\u7B49\u5F85Offer #${attempt}\uFF0C\u5DF2\u8981\u6C42\u5C0D\u65B9\u91CD\u5EFA`;
+        send({ type: "signal", to: peerId, data: { restart: true, requestedBy: mp.playerId, attempt, nonce: crypto.randomUUID() } }).catch((error2) => {
+          peer.stage = `\u91CD\u5EFA\u8ACB\u6C42\u5931\u6557 ${error2.message}`;
+          renderPlayers();
+        });
       }
       renderPlayers();
     }
     async function receiveSignal(peerId, data) {
+      if (data.restart) {
+        if (mp.playerId < peerId) {
+          dropPeer(peerId);
+          makePeer(peerId, true);
+        }
+        return;
+      }
       if (!mp.peers.has(peerId)) makePeer(peerId, false);
       const { pc } = mp.peers.get(peerId);
       try {

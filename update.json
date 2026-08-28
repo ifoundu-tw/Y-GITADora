@@ -1,7 +1,7 @@
 {
-  "version": "1.7.4",
-  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.7.4.zip",
-  "sha256": "EF47C8723BAEC2F18B62663B4F968E237696750F52C50429AAFF30F8DCF51819",
+  "version": "1.7.5",
+  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.7.5.zip",
+  "sha256": "4A86455A78028774BC525D00246FDD21BB2B91565BF589CDCAC9E31625093C4C",
   "minimumChromeVersion": "120",
-  "notes": "修正WebRTC協商失敗後永久卡在直連中：加入12秒協商逾時、ICE失敗／短暫斷線自動重建、指數退避重試，並在玩家狀態顯示Offer、ICE與重試次數。"
+  "notes": "修正等待Offer方單獨重試但發起方仍停留舊連線：等待方逾時後透過Firebase送出重新協商請求，指定Offer方同步清除舊peer並建立新Offer。"
 }
