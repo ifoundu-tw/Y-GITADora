@@ -17522,14 +17522,22 @@
       firebaseConnected: false,
       hitUnsub: null,
       maintenanceTimer: null,
-      hitSequence: 0
+      hitSequence: 0,
+      teammateVolume: 100,
+      remoteDeadlineMs: 250,
+      playerVolumes: {},
+      remoteStats: { received: 0, played: 0, dropped: 0, totalMs: 0, maxMs: 0 }
     };
     const panel = document.createElement("section");
     panel.id = "sdg-multiplayer";
     panel.className = "collapsed";
-    panel.innerHTML = `<h3><span>ONLINE SESSION</span><button id="sdg-mp-toggle">\u9023\u7DDA\u5408\u594F</button></h3><div class="sdg-mp-body"><div class="sdg-mp-row"><input id="sdg-mp-name" maxlength="24" placeholder="\u73A9\u5BB6\u540D\u7A31"><button id="sdg-mp-create">\u5EFA\u7ACB</button></div><div class="sdg-mp-row"><input id="sdg-mp-room" maxlength="6" placeholder="6\u4F4D\u623F\u865F"><button id="sdg-mp-join">\u52A0\u5165</button><button id="sdg-mp-leave">\u96E2\u958B</button></div><div>\u623F\u865F <span class="sdg-mp-code" id="sdg-mp-code">------</span></div><div id="sdg-mp-status">\u5C1A\u672A\u9023\u7DDA</div><div id="sdg-mp-players"></div><div class="sdg-mp-row"><button id="sdg-mp-song">\u540C\u6B65\u76EE\u524D\u6B4C\u66F2</button><button id="sdg-mp-ready">\u6E96\u5099</button><button id="sdg-mp-start">\u5168\u54E1\u958B\u59CB</button></div><details class="sdg-mp-diagnostics"><summary>\u9023\u7DDA\u8A3A\u65B7 <button id="sdg-mp-copy-log">\u8907\u88FD LOG</button></summary><pre id="sdg-mp-log">\u5C1A\u7121\u8A18\u9304</pre></details></div>`;
+    panel.innerHTML = `<h3><span>ONLINE SESSION</span><button id="sdg-mp-toggle">\u9023\u7DDA\u5408\u594F</button></h3><div class="sdg-mp-body"><div class="sdg-mp-row"><input id="sdg-mp-name" maxlength="24" placeholder="\u73A9\u5BB6\u540D\u7A31"><button id="sdg-mp-create">\u5EFA\u7ACB</button></div><div class="sdg-mp-row"><input id="sdg-mp-room" maxlength="4" placeholder="4\u4F4D\u623F\u865F"><button id="sdg-mp-join">\u52A0\u5165</button><button id="sdg-mp-leave">\u96E2\u958B</button></div><div>\u623F\u865F <span class="sdg-mp-code" id="sdg-mp-code">----</span></div><div id="sdg-mp-status">\u5C1A\u672A\u9023\u7DDA</div><div id="sdg-mp-players"></div><div class="sdg-mp-row"><button id="sdg-mp-song">\u540C\u6B65\u76EE\u524D\u6B4C\u66F2</button><button id="sdg-mp-ready">\u6E96\u5099</button><button id="sdg-mp-start">\u5168\u54E1\u958B\u59CB</button></div><details class="sdg-mp-diagnostics"><summary>\u9023\u7DDA\u8A3A\u65B7 <button id="sdg-mp-copy-log">\u8907\u88FD LOG</button></summary><pre id="sdg-mp-log">\u5C1A\u7121\u8A18\u9304</pre></details></div>`;
     gameApi.root().querySelector("#sdg-settings-side").append(panel);
     const $mp = (selector) => panel.querySelector(selector);
+    const ensembleControls = document.createElement("div");
+    ensembleControls.className = "sdg-mp-ensemble-controls";
+    ensembleControls.innerHTML = `<label>\u968A\u53CB\u7E3D\u97F3\u91CF <input id="sdg-mp-team-volume" type="range" min="0" max="200" value="100"><output id="sdg-mp-team-volume-value">100%</output></label><label>\u9060\u7AEF\u671F\u9650 <input id="sdg-mp-deadline" type="number" min="50" max="500" step="10" value="250"> ms</label><small id="sdg-mp-hit-stats">\u6E2C\u8A66\u6A21\u5F0F 250ms\uFF1A\u5C1A\u7121\u9060\u7AEF\u6253\u64CA</small>`;
+    $mp(".sdg-mp-diagnostics").before(ensembleControls);
     $mp("#sdg-mp-toggle").onclick = () => panel.classList.toggle("collapsed");
     const shortId = (value) => value ? String(value).slice(0, 8) : "-";
     function diagnostic(event, peerId = "", detail = "") {
@@ -17548,21 +17556,48 @@
       await navigator.clipboard.writeText(`Y-GITADora ${chrome.runtime.getManifest().version} room=${mp.roomId || "-"} self=${shortId(mp.playerId)} players=${mp.players.length}\n${mp.diagnostics.join("\n")}`);
       status("\u5DF2\u8907\u88FD\u9023\u7DDA LOG");
     };
+    $mp("#sdg-mp-team-volume").oninput = (event) => {
+      mp.teammateVolume = Number(event.target.value);
+      $mp("#sdg-mp-team-volume-value").textContent = `${mp.teammateVolume}%`;
+    };
+    $mp("#sdg-mp-team-volume").onchange = saveEnsembleSettings;
+    $mp("#sdg-mp-deadline").onchange = (event) => {
+      mp.remoteDeadlineMs = Math.max(50, Math.min(500, Number(event.target.value) || 250));
+      event.target.value = mp.remoteDeadlineMs;
+      saveEnsembleSettings();
+      renderRemoteStats();
+    };
+    function saveEnsembleSettings() {
+      chrome.storage.local.set({ sdgEnsembleSettings: { teammateVolume: mp.teammateVolume, remoteDeadlineMs: mp.remoteDeadlineMs, playerVolumes: mp.playerVolumes } });
+    }
+    function renderRemoteStats() {
+      const stats = mp.remoteStats;
+      const average = stats.received ? Math.round(stats.totalMs / stats.received) : 0;
+      $mp("#sdg-mp-hit-stats").textContent = `\u671F\u9650 ${mp.remoteDeadlineMs}ms \xB7 \u6536\u5230 ${stats.received} \xB7 \u64AD\u653E ${stats.played} \xB7 \u4E1F\u68C4 ${stats.dropped} \xB7 \u5E73\u5747 ${average}ms \xB7 \u6700\u9AD8 ${Math.round(stats.maxMs)}ms`;
+    }
     function status(text, type = "") {
       const element = $mp("#sdg-mp-status");
       element.textContent = text;
       element.className = type ? `sdg-mp-${type}` : "";
     }
     async function identity() {
-      const stored = await chrome.storage.local.get(["multiplayerName"]);
+      const stored = await chrome.storage.local.get(["multiplayerName", "sdgEnsembleSettings"]);
       if (!auth.currentUser) await signInAnonymously(auth);
       mp.playerId = auth.currentUser.uid;
       mp.name = stored.multiplayerName || `PLAYER-${mp.playerId.slice(0, 4).toUpperCase()}`;
+      const ensemble = stored.sdgEnsembleSettings || {};
+      mp.teammateVolume = Number.isFinite(ensemble.teammateVolume) ? ensemble.teammateVolume : 100;
+      mp.remoteDeadlineMs = Number.isFinite(ensemble.remoteDeadlineMs) ? ensemble.remoteDeadlineMs : 250;
+      mp.playerVolumes = ensemble.playerVolumes || {};
       await chrome.storage.local.set({ multiplayerName: mp.name });
       $mp("#sdg-mp-name").value = mp.name;
+      $mp("#sdg-mp-team-volume").value = mp.teammateVolume;
+      $mp("#sdg-mp-team-volume-value").textContent = `${mp.teammateVolume}%`;
+      $mp("#sdg-mp-deadline").value = mp.remoteDeadlineMs;
+      renderRemoteStats();
     }
     function makeRoomCode() {
-      const bytes = crypto.getRandomValues(new Uint8Array(6));
+      const bytes = crypto.getRandomValues(new Uint8Array(4));
       return Array.from(bytes, (value) => String(value % 10)).join("");
     }
     async function createRoom() {
@@ -17582,7 +17617,7 @@
     async function joinRoom() {
       saveName();
       const roomId = $mp("#sdg-mp-room").value.trim().toUpperCase();
-      if (!/^\d{6}$/.test(roomId)) return status("\u8ACB\u8F38\u51656\u4F4D\u6578\u5B57\u623F\u865F", "error");
+      if (!/^\d{4}$/.test(roomId)) return status("\u8ACB\u8F38\u51654\u4F4D\u6578\u5B57\u623F\u865F", "error");
       const exists = await get(ref(db, `rooms/${roomId}/meta`));
       if (!exists.exists()) return status("\u627E\u4E0D\u5230\u9019\u500B\u623F\u9593", "error");
       connect(roomId);
@@ -17608,7 +17643,7 @@
       mp.hostId = null;
       mp.song = null;
       await chrome.storage.local.remove("sdgMultiplayerResume");
-      $mp("#sdg-mp-code").textContent = "------";
+      $mp("#sdg-mp-code").textContent = "----";
       renderPlayers();
       status("\u5DF2\u96E2\u958B\u623F\u9593");
     }
@@ -17670,6 +17705,7 @@
       else cancelHostElection();
       closePeers();
       renderPlayers();
+      if (mp.players.some((player) => player.instrumentMode === "bass")) preloadBassSynth();
     }
     function cancelHostElection() {
       if (mp.hostElectionTimer) clearTimeout(mp.hostElectionTimer);
@@ -17941,9 +17977,21 @@
         const host = player.playerId === mp.hostId;
         const ready = player.ready && Number(player.readyEpoch) === mp.songEpoch;
         const instrument = player.instrumentMode === "bass" ? "BASS" : player.instrumentMode === "drums" ? "DRUMS" : "--";
-        return `<div class="sdg-mp-player"><span>${escapeHtml(player.name)} ${host ? '<b class="sdg-mp-host">HOST</b>' : ""}</span><b class="${mp.firebaseConnected ? "sdg-mp-ok" : "sdg-mp-error"}">${self2 ? "\u672C\u6A5F" : mp.firebaseConnected ? "Firebase" : "\u96E2\u7DDA"}</b><small>${ready ? `\u2713 \u5DF2\u6E96\u5099\u3000${instrument}` : "\u5C1A\u672A\u6E96\u5099"}${mp.playerId === mp.hostId && !self2 ? `\u3000<button data-host="${player.playerId}">\u8F49\u8B93\u623F\u4E3B</button>` : ""}</small></div>`;
+        const peerVolume = Number.isFinite(mp.playerVolumes[player.playerId]) ? mp.playerVolumes[player.playerId] : 100;
+        return `<div class="sdg-mp-player"><span>${escapeHtml(player.name)} ${host ? '<b class="sdg-mp-host">HOST</b>' : ""}</span><b class="${mp.firebaseConnected ? "sdg-mp-ok" : "sdg-mp-error"}">${self2 ? "\u672C\u6A5F" : mp.firebaseConnected ? "Firebase" : "\u96E2\u7DDA"}</b><small>${ready ? `\u2713 \u5DF2\u6E96\u5099\u3000${instrument}` : "\u5C1A\u672A\u6E96\u5099"}${mp.playerId === mp.hostId && !self2 ? `\u3000<button data-host="${player.playerId}">\u8F49\u8B93\u623F\u4E3B</button>` : ""}</small>${self2 ? "" : `<label class="sdg-mp-peer-volume">\u97F3\u91CF <input type="range" min="0" max="200" value="${peerVolume}" data-peer-volume="${player.playerId}"><output>${peerVolume}%</output><button data-peer-mute="${player.playerId}">${peerVolume ? "\u975C\u97F3" : "\u89E3\u9664"}</button></label>`}</div>`;
       }).join("");
       $mp("#sdg-mp-players").querySelectorAll("[data-host]").forEach((button) => button.onclick = () => send({ type: "transfer-host", to: button.dataset.host }));
+      $mp("#sdg-mp-players").querySelectorAll("[data-peer-volume]").forEach((input) => input.oninput = input.onchange = (event) => {
+        mp.playerVolumes[input.dataset.peerVolume] = Number(event.target.value);
+        input.nextElementSibling.textContent = `${event.target.value}%`;
+        if (event.type === "change") saveEnsembleSettings();
+      });
+      $mp("#sdg-mp-players").querySelectorAll("[data-peer-mute]").forEach((button) => button.onclick = () => {
+        const id = button.dataset.peerMute;
+        mp.playerVolumes[id] = mp.playerVolumes[id] ? 0 : 100;
+        saveEnsembleSettings();
+        renderPlayers();
+      });
       $mp("#sdg-mp-song").disabled = mp.playerId !== mp.hostId;
       $mp("#sdg-mp-start").disabled = mp.playerId !== mp.hostId;
     }
@@ -18003,24 +18051,52 @@
       mp.hitUnsub = onChildAdded(ref(db, `rooms/${mp.roomId}/hits/${startId}`), (snapshot) => {
         const packet = snapshot.val();
         if (!packet || packet.s === mp.playerId) return;
-        receiveHit({ songTimeMs: packet.t, instrumentMode: packet.i, partId: packet.r, lane: packet.l, articulation: packet.a || null, midi: packet.m, velocity: packet.v, duration_ms: packet.d, performance: packet.p || null, intensity: packet.x, judgment: packet.j });
+        receiveHit({ senderId: packet.s, sentAt: packet.c, songTimeMs: packet.t, instrumentMode: packet.i, partId: packet.r, lane: packet.l, articulation: packet.a || null, midi: packet.m, velocity: packet.v, duration_ms: packet.d, performance: packet.p || null, intensity: packet.x, judgment: packet.j });
       });
     }
     function broadcastHit(event) {
       if (!mp.roomId || !mp.lastStartId || !mp.firebaseConnected || !gameApi.isStarted()) return;
-      const packet = { s: mp.playerId, q: ++mp.hitSequence, t: Math.round(event.songTimeMs), i: event.instrumentMode || "drums", r: event.partId ?? null, l: event.lane || null, a: event.articulation || null, m: event.midi ?? null, v: event.velocity ?? null, d: event.duration_ms ?? 0, p: event.performance || null, x: event.intensity ?? 0.75, j: event.judgment || "PERFECT" };
+      const packet = { s: mp.playerId, q: ++mp.hitSequence, c: Math.round(Date.now() + mp.serverOffset), t: Math.round(event.songTimeMs), i: event.instrumentMode || "drums", r: event.partId ?? null, l: event.lane || null, a: event.articulation || null, m: event.midi ?? null, v: event.velocity ?? null, d: event.duration_ms ?? 0, p: event.performance || null, x: event.intensity ?? 0.75, j: event.judgment || "PERFECT" };
       set(push(ref(db, `rooms/${mp.roomId}/hits/${mp.lastStartId}`)), packet).catch((error2) => diagnostic("FIREBASE_HIT_ERROR", "", error2.message));
     }
     function receiveHit(event) {
       if (!gameApi.isStarted() || !Number.isFinite(event.songTimeMs)) return;
       const localSongMs = gameApi.songTimeMs();
       const lateBy = localSongMs - event.songTimeMs;
-      if (lateBy <= LATE_LIMIT_MS) gameApi.remoteHit(event);
-      else gameApi.remoteFlash(event);
+      const networkMs = Number.isFinite(event.sentAt) ? Math.max(0, Date.now() + mp.serverOffset - event.sentAt) : Math.max(0, lateBy);
+      const playerVolume = Number.isFinite(mp.playerVolumes[event.senderId]) ? mp.playerVolumes[event.senderId] : 100;
+      event.remoteGain = mp.teammateVolume / 100 * (playerVolume / 100);
+      mp.remoteStats.received++;
+      mp.remoteStats.totalMs += networkMs;
+      mp.remoteStats.maxMs = Math.max(mp.remoteStats.maxMs, networkMs);
+      const synthState = event.instrumentMode === "bass" ? globalThis.SDGBassSynth?.getState?.().state || "missing" : "drums-ready";
+      if (networkMs <= mp.remoteDeadlineMs && event.remoteGain > 0) {
+        mp.remoteStats.played++;
+        const result = gameApi.remoteHit(event);
+        diagnostic("REMOTE_HIT", event.senderId, `instrument=${event.instrumentMode} network=${Math.round(networkMs)}ms songLate=${Math.round(lateBy)}ms synth=${synthState} gain=${event.remoteGain.toFixed(2)} result=${result ?? "sent"}`);
+      } else {
+        mp.remoteStats.dropped++;
+        gameApi.remoteFlash(event);
+        diagnostic("REMOTE_DROP", event.senderId, `instrument=${event.instrumentMode} network=${Math.round(networkMs)}ms deadline=${mp.remoteDeadlineMs} gain=${event.remoteGain.toFixed(2)} synth=${synthState}`);
+      }
+      renderRemoteStats();
+    }
+    function preloadBassSynth() {
+      const synth = globalThis.SDGBassSynth;
+      if (!synth) return diagnostic("BASS_PRELOAD", "", "state=missing");
+      const before = synth.getState?.().state || "unknown";
+      diagnostic("BASS_PRELOAD", "", `state=${before}`);
+      synth.ensure().then(() => diagnostic("BASS_READY", "", "state=ready")).catch((error2) => diagnostic("BASS_PRELOAD_ERROR", "", error2.message));
     }
     globalThis.__sdgMultiplayerHit = broadcastHit;
-    $mp("#sdg-mp-create").onclick = () => createRoom().catch((error2) => status(error2.message, "error"));
-    $mp("#sdg-mp-join").onclick = () => joinRoom().catch((error2) => status(error2.message, "error"));
+    $mp("#sdg-mp-create").onclick = () => {
+      preloadBassSynth();
+      createRoom().catch((error2) => status(error2.message, "error"));
+    };
+    $mp("#sdg-mp-join").onclick = () => {
+      preloadBassSynth();
+      joinRoom().catch((error2) => status(error2.message, "error"));
+    };
     $mp("#sdg-mp-leave").onclick = leaveRoom;
     $mp("#sdg-mp-song").onclick = async () => {
       try {
@@ -18048,7 +18124,7 @@
     $mp("#sdg-mp-start").onclick = () => send({ type: "start" });
     identity().then(async () => {
       const { sdgMultiplayerResume } = await chrome.storage.local.get("sdgMultiplayerResume");
-      if (sdgMultiplayerResume?.roomId && Date.now() - sdgMultiplayerResume.savedAt < 30 * 60 * 1e3) {
+      if (/^\d{4}$/.test(sdgMultiplayerResume?.roomId || "") && Date.now() - sdgMultiplayerResume.savedAt < 30 * 60 * 1e3) {
         panel.classList.remove("collapsed");
         connect(sdgMultiplayerResume.roomId).catch((error2) => status(`\u91CD\u65B0\u9023\u7DDA\u5931\u6557\uFF1A${error2.message}`, "error"));
       }

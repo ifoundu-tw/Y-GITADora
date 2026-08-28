@@ -1,7 +1,7 @@
 {
-  "version": "1.8.1",
-  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.8.1.zip",
-  "sha256": "B8C358B6A254FABD5AF92B74BFD331996EB74249CC77EEE631FDF165F373376D",
+  "version": "1.8.2",
+  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.8.2.zip",
+  "sha256": "38F9AA99B7905C507D4523196BBE6F4B4B408ED28DA43B9617DA3994AA61D249",
   "minimumChromeVersion": "120",
-  "notes": "免費Firebase清理機制：在線玩家每5分鐘競爭全域清理鎖，僅一人讀取精簡索引，清除已過expiresAt的hit session與無人超過10分鐘的房間；不依賴房主、不需Cloud Functions。"
+  "notes": "跨樂器合奏診斷版：遠端期限預設250ms、收到即播；背景預載BASS音源，新增延遲／播放／丟棄／音源狀態LOG、隊友總音量及各玩家音量靜音；房號改為4位純數字。"
 }
