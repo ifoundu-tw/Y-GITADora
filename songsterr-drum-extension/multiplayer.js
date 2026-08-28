@@ -17625,13 +17625,18 @@
         if (message?.from && message?.data) await receiveSignal(message.from, message.data);
         await remove(snapshot.ref);
       }));
+      mp.unsubs.push(onChildAdded(ref(db, `rooms/${roomId}/events`), (snapshot) => {
+        const event = snapshot.val();
+        if (!event || event.senderId === mp.playerId || event.startId !== mp.lastStartId || Number(event.songEpoch) !== mp.songEpoch) return;
+        receiveHit(event);
+      }));
       mp.unsubs.push(onValue(ref(db, `rooms/${roomId}/commands/start`), (snapshot) => {
         const command = snapshot.val();
         if (!command?.id || command.id === mp.lastStartId) return;
         mp.lastStartId = command.id;
         beginSynchronized(command.serverStartAt);
       }));
-      status("\u5DF2\u9032\u623F\uFF0C\u5EFA\u7ACB\u73A9\u5BB6\u76F4\u9023\u4E2D\u2026", "wait");
+      status("\u5DF2\u9032\u623F\uFF0CFirebase \u5408\u594F\u901A\u9053\u5DF2\u9023\u7DDA", "ok");
       chrome.storage.local.set({ sdgMultiplayerResume: { roomId, name: mp.name, savedAt: Date.now() } });
     }
     function onMeta(meta) {
@@ -17650,7 +17655,7 @@
       mp.players = Object.entries(value).map(([playerId, player]) => ({ playerId, ...player }));
       if (mp.hostId && !value[mp.hostId] && mp.players.length) scheduleHostElection(mp.hostId);
       else cancelHostElection();
-      reconcilePeers();
+      closePeers();
       renderPlayers();
     }
     function cancelHostElection() {
@@ -17684,6 +17689,13 @@
     async function send(message) {
       if (!mp.roomId) return;
       if (message.type === "signal") return push(ref(db, `rooms/${mp.roomId}/signals/${message.to}`), { from: mp.playerId, data: message.data, createdAt: serverTimestamp() });
+      if (message.type === "hit") {
+        const eventRef = push(ref(db, `rooms/${mp.roomId}/events`));
+        await set(eventRef, { ...message.event, senderId: mp.playerId, createdAt: serverTimestamp(), songEpoch: mp.songEpoch, startId: mp.lastStartId });
+        setTimeout(() => remove(eventRef).catch(() => {
+        }), 15e3);
+        return;
+      }
       if (message.type === "ready") return update(ref(db, `rooms/${mp.roomId}/players/${mp.playerId}`), { ready: !!message.ready, readyEpoch: mp.songEpoch, instrumentMode: message.instrumentMode || null, partId: Number.isInteger(message.partId) ? message.partId : null, chartHash: message.chartHash || null, noteCount: Number(message.noteCount) || 0, lastSeenAt: serverTimestamp() });
       if (message.type === "select-song" && mp.playerId === mp.hostId) return update(ref(db, `rooms/${mp.roomId}/meta`), { song: message.song, songEpoch: mp.songEpoch + 1 });
       if (message.type === "transfer-host" && mp.playerId === mp.hostId) return update(ref(db, `rooms/${mp.roomId}/meta`), { hostId: message.to, hostEpoch: mp.hostEpoch + 1 });
@@ -17890,13 +17902,10 @@
     function renderPlayers() {
       $mp("#sdg-mp-players").innerHTML = mp.players.map((player) => {
         const self2 = player.playerId === mp.playerId;
-        const peer = mp.peers.get(player.playerId);
-        const direct = self2 || peer?.channel?.readyState === "open";
         const host = player.playerId === mp.hostId;
         const ready = player.ready && Number(player.readyEpoch) === mp.songEpoch;
         const instrument = player.instrumentMode === "bass" ? "BASS" : player.instrumentMode === "drums" ? "DRUMS" : "--";
-        const retry = mp.peerRetryCounts.get(player.playerId) || 0;
-        return `<div class="sdg-mp-player"><span>${escapeHtml(player.name)} ${host ? '<b class="sdg-mp-host">HOST</b>' : ""}</span><b class="${direct ? "sdg-mp-ok" : "sdg-mp-wait"}">${self2 ? "\u672C\u6A5F" : direct ? `${peer.ping ?? "--"}ms` : escapeHtml(peer?.stage || (retry ? `\u76F4\u9023\u91CD\u8A66 #${retry}` : "\u76F4\u9023\u4E2D"))}</b><small>${ready ? `\u2713 \u5DF2\u6E96\u5099\u3000${instrument}` : "\u5C1A\u672A\u6E96\u5099"}${mp.playerId === mp.hostId && !self2 ? `\u3000<button data-host="${player.playerId}">\u8F49\u8B93\u623F\u4E3B</button>` : ""}</small></div>`;
+        return `<div class="sdg-mp-player"><span>${escapeHtml(player.name)} ${host ? '<b class="sdg-mp-host">HOST</b>' : ""}</span><b class="sdg-mp-ok">${self2 ? "\u672C\u6A5F" : "Firebase"}</b><small>${ready ? `\u2713 \u5DF2\u6E96\u5099\u3000${instrument}` : "\u5C1A\u672A\u6E96\u5099"}${mp.playerId === mp.hostId && !self2 ? `\u3000<button data-host="${player.playerId}">\u8F49\u8B93\u623F\u4E3B</button>` : ""}</small></div>`;
       }).join("");
       $mp("#sdg-mp-players").querySelectorAll("[data-host]").forEach((button) => button.onclick = () => send({ type: "transfer-host", to: button.dataset.host }));
       $mp("#sdg-mp-song").disabled = mp.playerId !== mp.hostId;
@@ -17936,13 +17945,12 @@
       status(`\u6B4C\u66F2\u4E00\u81F4\uFF1A${mp.song.title}\uFF0C\u53EF\u4F7F\u7528\u5404\u81EA\u6A02\u5668\u8B5C`, "ok");
     }
     function allDirect() {
-      return mp.players.filter((player) => player.playerId !== mp.playerId).every((player) => mp.peers.get(player.playerId)?.channel?.readyState === "open");
+      return true;
     }
     async function measureStartCompensation() {
       return gameApi.measureStartCompensation();
     }
     async function beginSynchronized(serverStartAt) {
-      if (!allDirect()) return status("\u6709\u4EBA\u5C1A\u672A\u5B8C\u6210\u76F4\u9023\uFF0C\u53D6\u6D88\u958B\u59CB", "error");
       const localStartAt = serverStartAt - mp.serverOffset;
       status(`\u5171\u540C\u958B\u59CB\u5012\u6578 ${Math.max(0, (localStartAt - Date.now()) / 1e3).toFixed(1)}\u79D2`, "wait");
       const measured = await measureStartCompensation();
@@ -17956,16 +17964,13 @@
     }
     function broadcastHit(event) {
       if (!mp.roomId || !gameApi.isStarted()) return;
-      const message = JSON.stringify({ type: "hit", ...event, senderId: mp.playerId, sequence: crypto.randomUUID() });
-      for (const peer of mp.peers.values()) if (peer.channel?.readyState === "open") peer.channel.send(message);
+      send({ type: "hit", event: { ...event, sequence: crypto.randomUUID(), sentAtClient: Date.now() + mp.serverOffset } }).catch((error2) => diagnostic("FIREBASE_HIT_ERROR", "", error2.message));
     }
     function receiveHit(event) {
       if (!gameApi.isStarted() || !Number.isFinite(event.songTimeMs)) return;
       const localSongMs = gameApi.songTimeMs();
-      const wait = event.songTimeMs - localSongMs;
-      const play = () => gameApi.remoteHit(event);
-      if (wait >= 0) setTimeout(play, wait / Math.max(0.25, gameApi.state().actualPlaybackRate));
-      else if (wait >= -LATE_LIMIT_MS) play();
+      const lateBy = localSongMs - event.songTimeMs;
+      if (lateBy <= LATE_LIMIT_MS) gameApi.remoteHit(event);
       else gameApi.remoteFlash(event);
     }
     globalThis.__sdgMultiplayerHit = broadcastHit;
@@ -17983,7 +17988,6 @@
     $mp("#sdg-mp-ready").onclick = async () => {
       try {
         if (!mp.song) return status("\u8ACB\u5148\u7531\u623F\u4E3B\u9078\u6B4C", "error");
-        if (!allDirect()) return status("\u5C1A\u672A\u5B8C\u6210\u6240\u6709\u73A9\u5BB6\u76F4\u9023", "error");
         const local = gameApi.state();
         if (!local.chart.length) return status("\u672C\u6A5F\u8B5C\u9762\u5C1A\u672A\u8F09\u5165", "error");
         if (local.songId !== mp.song.songId || local.currentRevision !== mp.song.revisionId) return status("\u6B4C\u66F2\u6216\u4FEE\u8A02\u7248\u672C\u4E0D\u4E00\u81F4", "error");

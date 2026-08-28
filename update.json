@@ -1,7 +1,7 @@
 {
-  "version": "1.7.8",
-  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.7.8.zip",
-  "sha256": "CE7BF8485750C8B98264D447A413E6F5FE3E6F21F83A1075FBD330476FB654B8",
+  "version": "1.7.9",
+  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.7.9.zip",
+  "sha256": "9756AD1C953ABF6826555229931851B74B723260CFF7940012B8F957B8E4034F",
   "minimumChromeVersion": "120",
-  "notes": "修正雙方同時重試造成的協商競爭：改由Offer端單獨主導重建，ICE等待延長至30秒；補充Offer、Answer與ICE候選類型診斷。"
+  "notes": "連線合奏改為Firebase RTDB中心制，不再依賴WebRTC直連；遠端打擊收到後立即播放、不加入人工時間緩衝，過期事件丟棄。"
 }
