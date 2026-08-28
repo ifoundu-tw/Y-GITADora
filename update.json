@@ -1,7 +1,7 @@
 {
-  "version": "1.8.4",
-  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.8.4.zip",
-  "sha256": "50955164530CC9099D13C79CBAB1C2812895C6B237E6D3F211E78BB3362796CA",
+  "version": "1.8.5",
+  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.8.5.zip",
+  "sha256": "D5D3A4CB360F481F9F339AEACD7F01EC6103F125B004E22D49E0124E809993D5",
   "minimumChromeVersion": "120",
-  "notes": "修正插件更新／頁面重載時，舊連線的onDisconnect延遲刪除新玩家presence，導致打擊被Firebase PERMISSION_DENIED：本機紀錄消失時自動重建，首次權限錯誤修復後在期限內重送一次。"
+  "notes": "修正連線合奏準備狀態：房主只顯示全員開始、不需準備；房客換歌後立即回到尚未準備，準備狀態只對目前歌曲有效。"
 }

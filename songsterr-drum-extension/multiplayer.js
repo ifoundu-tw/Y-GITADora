@@ -17697,8 +17697,15 @@
       mp.hostEpoch = Number(meta.hostEpoch) || 0;
       mp.songEpoch = Number(meta.songEpoch) || 0;
       mp.song = meta.song || null;
-      if (previousSongEpoch !== mp.songEpoch && mp.roomId) update(ref(db, `rooms/${mp.roomId}/players/${mp.playerId}`), { ready: false, readyEpoch: mp.songEpoch, lastSeenAt: serverTimestamp() }).catch(() => {
-      });
+      if (previousSongEpoch !== mp.songEpoch && mp.roomId) {
+        const me = mp.players.find((player) => player.playerId === mp.playerId);
+        if (me) {
+          me.ready = false;
+          me.readyEpoch = mp.songEpoch;
+        }
+        update(ref(db, `rooms/${mp.roomId}/players/${mp.playerId}`), { ready: false, readyEpoch: mp.songEpoch, lastSeenAt: serverTimestamp() }).catch(() => {
+        });
+      }
       renderPlayers();
       verifyRoomSong();
     }
@@ -17718,7 +17725,9 @@
         const playerRef = ref(db, `rooms/${mp.roomId}/players/${mp.playerId}`);
         mp.playerRef = playerRef;
         const local = gameApi.state();
-        await set(playerRef, { name: mp.name, ready: gameApi.isStarted(), readyEpoch: mp.songEpoch, instrumentMode: local.instrumentMode || null, partId: Number.isInteger(local.currentPart) ? local.currentPart : null, joinedAt: Date.now(), lastSeenAt: serverTimestamp() });
+        const existing = mp.players.find((player) => player.playerId === mp.playerId);
+        const validReady = mp.playerId !== mp.hostId && !!existing?.ready && Number(existing.readyEpoch) === mp.songEpoch;
+        await set(playerRef, { name: mp.name, ready: validReady, readyEpoch: mp.songEpoch, instrumentMode: local.instrumentMode || null, partId: Number.isInteger(local.currentPart) ? local.currentPart : null, joinedAt: existing?.joinedAt || Date.now(), lastSeenAt: serverTimestamp() });
         await onDisconnect(playerRef).remove();
         diagnostic("PRESENCE_REPAIRED", "", `room=${mp.roomId}`);
         return true;
@@ -17760,7 +17769,8 @@
       if (message.type === "select-song" && mp.playerId === mp.hostId) return update(ref(db, `rooms/${mp.roomId}/meta`), { song: message.song, songEpoch: mp.songEpoch + 1 });
       if (message.type === "transfer-host" && mp.playerId === mp.hostId) return update(ref(db, `rooms/${mp.roomId}/meta`), { hostId: message.to, hostEpoch: mp.hostEpoch + 1 });
       if (message.type === "start" && mp.playerId === mp.hostId) {
-        const allReady = mp.players.length >= 2 && mp.players.every((player) => player.ready && Number(player.readyEpoch) === mp.songEpoch);
+        const guests = mp.players.filter((player) => player.playerId !== mp.hostId);
+        const allReady = guests.length >= 1 && guests.every((player) => player.ready && Number(player.readyEpoch) === mp.songEpoch);
         if (!allReady) return status("\u4ECD\u6709\u73A9\u5BB6\u5C1A\u672A\u6E96\u5099", "error");
         const id = crypto.randomUUID();
         const serverStartAt = Date.now() + mp.serverOffset + 5e3;
@@ -17996,7 +18006,7 @@
         const ready = player.ready && Number(player.readyEpoch) === mp.songEpoch;
         const instrument = player.instrumentMode === "bass" ? "BASS" : player.instrumentMode === "drums" ? "DRUMS" : "--";
         const peerVolume = Number.isFinite(mp.playerVolumes[player.playerId]) ? mp.playerVolumes[player.playerId] : 100;
-        return `<div class="sdg-mp-player"><span>${escapeHtml(player.name)} ${host ? '<b class="sdg-mp-host">HOST</b>' : ""}</span><b class="${mp.firebaseConnected ? "sdg-mp-ok" : "sdg-mp-error"}">${self2 ? "\u672C\u6A5F" : mp.firebaseConnected ? "Firebase" : "\u96E2\u7DDA"}</b><small>${ready ? `\u2713 \u5DF2\u6E96\u5099\u3000${instrument}` : "\u5C1A\u672A\u6E96\u5099"}${mp.playerId === mp.hostId && !self2 ? `\u3000<button data-host="${player.playerId}">\u8F49\u8B93\u623F\u4E3B</button>` : ""}</small>${self2 ? "" : `<label class="sdg-mp-peer-volume">\u97F3\u91CF <input type="range" min="0" max="200" value="${peerVolume}" data-peer-volume="${player.playerId}"><output>${peerVolume}%</output><button data-peer-mute="${player.playerId}">${peerVolume ? "\u975C\u97F3" : "\u89E3\u9664"}</button></label>`}</div>`;
+        return `<div class="sdg-mp-player"><span>${escapeHtml(player.name)} ${host ? '<b class="sdg-mp-host">HOST</b>' : ""}</span><b class="${mp.firebaseConnected ? "sdg-mp-ok" : "sdg-mp-error"}">${self2 ? "\u672C\u6A5F" : mp.firebaseConnected ? "Firebase" : "\u96E2\u7DDA"}</b><small>${host ? `\u623F\u4E3B\u3000${instrument}` : ready ? `\u2713 \u5DF2\u6E96\u5099\u3000${instrument}` : "\u5C1A\u672A\u6E96\u5099"}${mp.playerId === mp.hostId && !self2 ? `\u3000<button data-host="${player.playerId}">\u8F49\u8B93\u623F\u4E3B</button>` : ""}</small>${self2 ? "" : `<label class="sdg-mp-peer-volume">\u97F3\u91CF <input type="range" min="0" max="200" value="${peerVolume}" data-peer-volume="${player.playerId}"><output>${peerVolume}%</output><button data-peer-mute="${player.playerId}">${peerVolume ? "\u975C\u97F3" : "\u89E3\u9664"}</button></label>`}</div>`;
       }).join("");
       $mp("#sdg-mp-players").querySelectorAll("[data-host]").forEach((button) => button.onclick = () => send({ type: "transfer-host", to: button.dataset.host }));
       $mp("#sdg-mp-players").querySelectorAll("[data-peer-volume]").forEach((input) => input.oninput = input.onchange = (event) => {
@@ -18010,8 +18020,13 @@
         saveEnsembleSettings();
         renderPlayers();
       });
-      $mp("#sdg-mp-song").disabled = mp.playerId !== mp.hostId;
-      $mp("#sdg-mp-start").disabled = mp.playerId !== mp.hostId;
+      const isHost = mp.playerId === mp.hostId;
+      const me = mp.players.find((player) => player.playerId === mp.playerId);
+      const meReady = !isHost && !!me?.ready && Number(me.readyEpoch) === mp.songEpoch;
+      $mp("#sdg-mp-song").hidden = !isHost;
+      $mp("#sdg-mp-ready").hidden = isHost;
+      $mp("#sdg-mp-ready").textContent = meReady ? "\u53D6\u6D88\u6E96\u5099" : "\u6E96\u5099";
+      $mp("#sdg-mp-start").hidden = !isHost;
     }
     function escapeHtml(value) {
       const div = document.createElement("div");
@@ -18136,6 +18151,7 @@
     };
     $mp("#sdg-mp-ready").onclick = async () => {
       try {
+        if (mp.playerId === mp.hostId) return;
         if (!mp.song) return status("\u8ACB\u5148\u7531\u623F\u4E3B\u9078\u6B4C", "error");
         const local = gameApi.state();
         if (!local.chart.length) return status("\u672C\u6A5F\u8B5C\u9762\u5C1A\u672A\u8F09\u5165", "error");
