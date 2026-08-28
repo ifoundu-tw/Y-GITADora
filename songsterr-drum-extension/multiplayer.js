@@ -17686,7 +17686,7 @@
       mp.peerRetryTimers.delete(peerId);
       const pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
       const attempt = (mp.peerRetryCounts.get(peerId) || 0) + 1;
-      const peer = { pc, channel: null, ping: null, openedAt: 0, pendingCandidates: [], attempt, connectTimer: null, disconnectTimer: null, stage: `${initiator ? "\u5EFA\u7ACBOffer" : "\u7B49\u5F85Offer"} #${attempt}` };
+      const peer = { pc, channel: null, ping: null, openedAt: 0, pendingCandidates: [], attempt, initiator, negotiationId: initiator ? crypto.randomUUID() : null, connectTimer: null, disconnectTimer: null, stage: `${initiator ? "\u5EFA\u7ACBOffer" : "\u7B49\u5F85Offer"} #${attempt}` };
       mp.peers.set(peerId, peer);
       peer.connectTimer = setTimeout(() => {
         if (mp.peers.get(peerId) === peer && peer.channel?.readyState !== "open") {
@@ -17699,7 +17699,7 @@
         if (!candidate) return;
         peer.stage = "\u4EA4\u63DBICE";
         renderPlayers();
-        send({ type: "signal", to: peerId, data: { candidate: candidate.toJSON?.() || candidate } }).catch((error2) => {
+        send({ type: "signal", to: peerId, data: { candidate: candidate.toJSON?.() || candidate, negotiationId: peer.negotiationId } }).catch((error2) => {
           peer.stage = `ICE\u932F\u8AA4 ${error2.message}`;
           renderPlayers();
         });
@@ -17723,7 +17723,7 @@
       pc.ondatachannel = ({ channel }) => attachChannel(peerId, channel);
       if (initiator) {
         attachChannel(peerId, pc.createDataChannel("drums", { ordered: false, maxRetransmits: 0 }));
-        pc.createOffer().then((offer) => pc.setLocalDescription(offer)).then(() => send({ type: "signal", to: peerId, data: { description: pc.localDescription.toJSON?.() || pc.localDescription } })).catch((error2) => {
+        pc.createOffer().then((offer) => pc.setLocalDescription(offer)).then(() => send({ type: "signal", to: peerId, data: { description: pc.localDescription.toJSON?.() || pc.localDescription, negotiationId: peer.negotiationId } })).catch((error2) => {
           peer.stage = `Offer\u932F\u8AA4 ${error2.message}`;
           renderPlayers();
         });
@@ -17745,21 +17745,28 @@
         return;
       }
       if (!mp.peers.has(peerId)) makePeer(peerId, false);
-      const { pc } = mp.peers.get(peerId);
+      const peer = mp.peers.get(peerId), { pc } = peer;
       try {
         if (data.description) {
-          mp.peers.get(peerId).stage = `\u6536\u5230${data.description.type}`;
+          const type = data.description.type;
+          if (type === "answer") {
+            if (!peer.initiator || pc.signalingState !== "have-local-offer" || data.negotiationId && data.negotiationId !== peer.negotiationId) return;
+          } else if (type === "offer") {
+            if (peer.initiator || pc.signalingState !== "stable") return;
+            peer.negotiationId = data.negotiationId || crypto.randomUUID();
+          }
+          peer.stage = `\u6536\u5230${type}`;
           renderPlayers();
           await pc.setRemoteDescription(data.description);
-          const peer = mp.peers.get(peerId);
-          for (const candidate of peer.pendingCandidates.splice(0)) await pc.addIceCandidate(candidate);
-          if (data.description.type === "offer") {
+          for (const pending of peer.pendingCandidates.splice(0)) if (!pending.negotiationId || pending.negotiationId === peer.negotiationId) await pc.addIceCandidate(pending.candidate);
+          if (type === "offer") {
             await pc.setLocalDescription(await pc.createAnswer());
-            send({ type: "signal", to: peerId, data: { description: pc.localDescription.toJSON?.() || pc.localDescription } });
+            send({ type: "signal", to: peerId, data: { description: pc.localDescription.toJSON?.() || pc.localDescription, negotiationId: peer.negotiationId } });
           }
         } else if (data.candidate) {
+          if (data.negotiationId && peer.negotiationId && data.negotiationId !== peer.negotiationId) return;
           if (pc.remoteDescription) await pc.addIceCandidate(data.candidate);
-          else mp.peers.get(peerId).pendingCandidates.push(data.candidate);
+          else peer.pendingCandidates.push({ candidate: data.candidate, negotiationId: data.negotiationId || null });
         }
       } catch (error2) {
         status(`\u76F4\u9023\u5354\u5546\u5931\u6557\uFF1A${error2.message}`, "error");
