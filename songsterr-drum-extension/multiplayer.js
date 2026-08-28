@@ -17518,7 +17518,11 @@
       hostElectionFor: null,
       peerRetryTimers: /* @__PURE__ */ new Map(),
       peerRetryCounts: /* @__PURE__ */ new Map(),
-      diagnostics: []
+      diagnostics: [],
+      firebaseConnected: false,
+      hitUnsub: null,
+      hitCleanupTimer: null,
+      hitSequence: 0
     };
     const panel = document.createElement("section");
     panel.id = "sdg-multiplayer";
@@ -17586,6 +17590,10 @@
     function disconnectRoom() {
       cancelHostElection();
       closePeers();
+      if (mp.hitUnsub) mp.hitUnsub();
+      mp.hitUnsub = null;
+      if (mp.hitCleanupTimer) clearTimeout(mp.hitCleanupTimer);
+      mp.hitCleanupTimer = null;
       for (const unsub of mp.unsubs.splice(0)) try {
         unsub();
       } catch {
@@ -17618,6 +17626,10 @@
       mp.unsubs.push(onValue(ref(db, ".info/serverTimeOffset"), (snapshot) => {
         mp.serverOffset = Number(snapshot.val()) || 0;
       }));
+      mp.unsubs.push(onValue(ref(db, ".info/connected"), (snapshot) => {
+        mp.firebaseConnected = snapshot.val() === true;
+        renderPlayers();
+      }));
       mp.unsubs.push(onValue(ref(db, `rooms/${roomId}/meta`), (snapshot) => onMeta(snapshot.val())));
       mp.unsubs.push(onValue(playersRef, (snapshot) => onPlayers(snapshot.val() || {})));
       mp.unsubs.push(onChildAdded(ref(db, `rooms/${roomId}/signals/${mp.playerId}`), async (snapshot) => {
@@ -17625,15 +17637,14 @@
         if (message?.from && message?.data) await receiveSignal(message.from, message.data);
         await remove(snapshot.ref);
       }));
-      mp.unsubs.push(onChildAdded(ref(db, `rooms/${roomId}/events`), (snapshot) => {
-        const event = snapshot.val();
-        if (!event || event.senderId === mp.playerId || event.startId !== mp.lastStartId || Number(event.songEpoch) !== mp.songEpoch) return;
-        receiveHit(event);
-      }));
       mp.unsubs.push(onValue(ref(db, `rooms/${roomId}/commands/start`), (snapshot) => {
         const command = snapshot.val();
         if (!command?.id || command.id === mp.lastStartId) return;
+        const previousStartId = mp.lastStartId;
         mp.lastStartId = command.id;
+        subscribeHits(command.id);
+        if (previousStartId && mp.playerId === mp.hostId) remove(ref(db, `rooms/${mp.roomId}/hits/${previousStartId}`)).catch(() => {
+        });
         beginSynchronized(command.serverStartAt);
       }));
       status("\u5DF2\u9032\u623F\uFF0CFirebase \u5408\u594F\u901A\u9053\u5DF2\u9023\u7DDA", "ok");
@@ -17689,13 +17700,6 @@
     async function send(message) {
       if (!mp.roomId) return;
       if (message.type === "signal") return push(ref(db, `rooms/${mp.roomId}/signals/${message.to}`), { from: mp.playerId, data: message.data, createdAt: serverTimestamp() });
-      if (message.type === "hit") {
-        const eventRef = push(ref(db, `rooms/${mp.roomId}/events`));
-        await set(eventRef, { ...message.event, senderId: mp.playerId, createdAt: serverTimestamp(), songEpoch: mp.songEpoch, startId: mp.lastStartId });
-        setTimeout(() => remove(eventRef).catch(() => {
-        }), 15e3);
-        return;
-      }
       if (message.type === "ready") return update(ref(db, `rooms/${mp.roomId}/players/${mp.playerId}`), { ready: !!message.ready, readyEpoch: mp.songEpoch, instrumentMode: message.instrumentMode || null, partId: Number.isInteger(message.partId) ? message.partId : null, chartHash: message.chartHash || null, noteCount: Number(message.noteCount) || 0, lastSeenAt: serverTimestamp() });
       if (message.type === "select-song" && mp.playerId === mp.hostId) return update(ref(db, `rooms/${mp.roomId}/meta`), { song: message.song, songEpoch: mp.songEpoch + 1 });
       if (message.type === "transfer-host" && mp.playerId === mp.hostId) return update(ref(db, `rooms/${mp.roomId}/meta`), { hostId: message.to, hostEpoch: mp.hostEpoch + 1 });
@@ -17905,7 +17909,7 @@
         const host = player.playerId === mp.hostId;
         const ready = player.ready && Number(player.readyEpoch) === mp.songEpoch;
         const instrument = player.instrumentMode === "bass" ? "BASS" : player.instrumentMode === "drums" ? "DRUMS" : "--";
-        return `<div class="sdg-mp-player"><span>${escapeHtml(player.name)} ${host ? '<b class="sdg-mp-host">HOST</b>' : ""}</span><b class="sdg-mp-ok">${self2 ? "\u672C\u6A5F" : "Firebase"}</b><small>${ready ? `\u2713 \u5DF2\u6E96\u5099\u3000${instrument}` : "\u5C1A\u672A\u6E96\u5099"}${mp.playerId === mp.hostId && !self2 ? `\u3000<button data-host="${player.playerId}">\u8F49\u8B93\u623F\u4E3B</button>` : ""}</small></div>`;
+        return `<div class="sdg-mp-player"><span>${escapeHtml(player.name)} ${host ? '<b class="sdg-mp-host">HOST</b>' : ""}</span><b class="${mp.firebaseConnected ? "sdg-mp-ok" : "sdg-mp-error"}">${self2 ? "\u672C\u6A5F" : mp.firebaseConnected ? "Firebase" : "\u96E2\u7DDA"}</b><small>${ready ? `\u2713 \u5DF2\u6E96\u5099\u3000${instrument}` : "\u5C1A\u672A\u6E96\u5099"}${mp.playerId === mp.hostId && !self2 ? `\u3000<button data-host="${player.playerId}">\u8F49\u8B93\u623F\u4E3B</button>` : ""}</small></div>`;
       }).join("");
       $mp("#sdg-mp-players").querySelectorAll("[data-host]").forEach((button) => button.onclick = () => send({ type: "transfer-host", to: button.dataset.host }));
       $mp("#sdg-mp-song").disabled = mp.playerId !== mp.hostId;
@@ -17961,10 +17965,26 @@
         gameApi.startOnline(`ONLINE \xB7 ${mp.roomId} \xB7 \u88DC\u511F ${Math.round(measured.lastStartCompMs)}ms${measured.confirmed ? "" : "*"}`);
         status("\u5408\u594F\u9032\u884C\u4E2D", "ok");
       }, Math.max(0, localStartAt - Date.now()));
+      if (mp.playerId === mp.hostId) {
+        const endMs = Math.max(0, ...gameApi.state().chart.map((note) => Number(note.time_ms || 0) + Number(note.duration_ms || 0))) + 3e4;
+        if (mp.hitCleanupTimer) clearTimeout(mp.hitCleanupTimer);
+        const startId = mp.lastStartId;
+        mp.hitCleanupTimer = setTimeout(() => remove(ref(db, `rooms/${mp.roomId}/hits/${startId}`)).catch(() => {
+        }), Math.max(3e4, endMs / Math.max(0.25, gameApi.state().actualPlaybackRate)));
+      }
+    }
+    function subscribeHits(startId) {
+      if (mp.hitUnsub) mp.hitUnsub();
+      mp.hitUnsub = onChildAdded(ref(db, `rooms/${mp.roomId}/hits/${startId}`), (snapshot) => {
+        const packet = snapshot.val();
+        if (!packet || packet.s === mp.playerId) return;
+        receiveHit({ songTimeMs: packet.t, instrumentMode: packet.i, partId: packet.r, lane: packet.l, articulation: packet.a || null, midi: packet.m, velocity: packet.v, duration_ms: packet.d, performance: packet.p || null, intensity: packet.x, judgment: packet.j });
+      });
     }
     function broadcastHit(event) {
-      if (!mp.roomId || !gameApi.isStarted()) return;
-      send({ type: "hit", event: { ...event, sequence: crypto.randomUUID(), sentAtClient: Date.now() + mp.serverOffset } }).catch((error2) => diagnostic("FIREBASE_HIT_ERROR", "", error2.message));
+      if (!mp.roomId || !mp.lastStartId || !mp.firebaseConnected || !gameApi.isStarted()) return;
+      const packet = { s: mp.playerId, q: ++mp.hitSequence, t: Math.round(event.songTimeMs), i: event.instrumentMode || "drums", r: event.partId ?? null, l: event.lane || null, a: event.articulation || null, m: event.midi ?? null, v: event.velocity ?? null, d: event.duration_ms ?? 0, p: event.performance || null, x: event.intensity ?? 0.75, j: event.judgment || "PERFECT" };
+      set(push(ref(db, `rooms/${mp.roomId}/hits/${mp.lastStartId}`)), packet).catch((error2) => diagnostic("FIREBASE_HIT_ERROR", "", error2.message));
     }
     function receiveHit(event) {
       if (!gameApi.isStarted() || !Number.isFinite(event.songTimeMs)) return;

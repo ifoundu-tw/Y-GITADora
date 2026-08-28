@@ -1,7 +1,7 @@
 {
-  "version": "1.7.9",
-  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.7.9.zip",
-  "sha256": "9756AD1C953ABF6826555229931851B74B723260CFF7940012B8F957B8E4034F",
+  "version": "1.8.0",
+  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.8.0.zip",
+  "sha256": "A11CC85F00D0802C000C9C338F7D9821791366D4F124957D02039DD67AE41F57",
   "minimumChromeVersion": "120",
-  "notes": "連線合奏改為Firebase RTDB中心制，不再依賴WebRTC直連；遠端打擊收到後立即播放、不加入人工時間緩衝，過期事件丟棄。"
+  "notes": "最佳化Firebase即時合奏：每局獨立即時通道，打擊只寫入一次、不逐筆刪除、不在線時直接放棄；遠端收到即播，下一局或歌曲結束由房主一次整批清除。"
 }
