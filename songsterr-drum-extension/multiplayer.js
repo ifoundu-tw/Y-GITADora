@@ -17517,15 +17517,33 @@
       hostElectionTimer: null,
       hostElectionFor: null,
       peerRetryTimers: /* @__PURE__ */ new Map(),
-      peerRetryCounts: /* @__PURE__ */ new Map()
+      peerRetryCounts: /* @__PURE__ */ new Map(),
+      diagnostics: []
     };
     const panel = document.createElement("section");
     panel.id = "sdg-multiplayer";
     panel.className = "collapsed";
-    panel.innerHTML = `<h3><span>ONLINE SESSION</span><button id="sdg-mp-toggle">\u9023\u7DDA\u5408\u594F</button></h3><div class="sdg-mp-body"><div class="sdg-mp-row"><input id="sdg-mp-name" maxlength="24" placeholder="\u73A9\u5BB6\u540D\u7A31"><button id="sdg-mp-create">\u5EFA\u7ACB</button></div><div class="sdg-mp-row"><input id="sdg-mp-room" maxlength="6" placeholder="6\u4F4D\u623F\u865F"><button id="sdg-mp-join">\u52A0\u5165</button><button id="sdg-mp-leave">\u96E2\u958B</button></div><div>\u623F\u865F <span class="sdg-mp-code" id="sdg-mp-code">------</span></div><div id="sdg-mp-status">\u5C1A\u672A\u9023\u7DDA</div><div id="sdg-mp-players"></div><div class="sdg-mp-row"><button id="sdg-mp-song">\u540C\u6B65\u76EE\u524D\u6B4C\u66F2</button><button id="sdg-mp-ready">\u6E96\u5099</button><button id="sdg-mp-start">\u5168\u54E1\u958B\u59CB</button></div></div>`;
+    panel.innerHTML = `<h3><span>ONLINE SESSION</span><button id="sdg-mp-toggle">\u9023\u7DDA\u5408\u594F</button></h3><div class="sdg-mp-body"><div class="sdg-mp-row"><input id="sdg-mp-name" maxlength="24" placeholder="\u73A9\u5BB6\u540D\u7A31"><button id="sdg-mp-create">\u5EFA\u7ACB</button></div><div class="sdg-mp-row"><input id="sdg-mp-room" maxlength="6" placeholder="6\u4F4D\u623F\u865F"><button id="sdg-mp-join">\u52A0\u5165</button><button id="sdg-mp-leave">\u96E2\u958B</button></div><div>\u623F\u865F <span class="sdg-mp-code" id="sdg-mp-code">------</span></div><div id="sdg-mp-status">\u5C1A\u672A\u9023\u7DDA</div><div id="sdg-mp-players"></div><div class="sdg-mp-row"><button id="sdg-mp-song">\u540C\u6B65\u76EE\u524D\u6B4C\u66F2</button><button id="sdg-mp-ready">\u6E96\u5099</button><button id="sdg-mp-start">\u5168\u54E1\u958B\u59CB</button></div><details class="sdg-mp-diagnostics"><summary>\u9023\u7DDA\u8A3A\u65B7 <button id="sdg-mp-copy-log">\u8907\u88FD LOG</button></summary><pre id="sdg-mp-log">\u5C1A\u7121\u8A18\u9304</pre></details></div>`;
     gameApi.root().querySelector("#sdg-settings-side").append(panel);
     const $mp = (selector) => panel.querySelector(selector);
     $mp("#sdg-mp-toggle").onclick = () => panel.classList.toggle("collapsed");
+    const shortId = (value) => value ? String(value).slice(0, 8) : "-";
+    function diagnostic(event, peerId = "", detail = "") {
+      const now = new Date();
+      const stamp = now.toLocaleTimeString("zh-TW", { hour12: false }) + `.${String(now.getMilliseconds()).padStart(3, "0")}`;
+      const line = `[${stamp}] ${event}${peerId ? ` peer=${shortId(peerId)}` : ""}${detail ? ` ${detail}` : ""}`;
+      mp.diagnostics.push(line);
+      if (mp.diagnostics.length > 200) mp.diagnostics.splice(0, mp.diagnostics.length - 200);
+      const output = $mp("#sdg-mp-log");
+      if (output) output.textContent = mp.diagnostics.join("\n");
+      console.info("[Y-GITADora RTC]", line);
+    }
+    $mp("#sdg-mp-copy-log").onclick = async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      await navigator.clipboard.writeText(`Y-GITADora ${chrome.runtime.getManifest().version} room=${mp.roomId || "-"} self=${shortId(mp.playerId)} players=${mp.players.length}\n${mp.diagnostics.join("\n")}`);
+      status("\u5DF2\u8907\u88FD\u9023\u7DDA LOG");
+    };
     function status(text, type = "") {
       const element = $mp("#sdg-mp-status");
       element.textContent = text;
@@ -17688,9 +17706,11 @@
       const attempt = (mp.peerRetryCounts.get(peerId) || 0) + 1;
       const peer = { pc, channel: null, ping: null, openedAt: 0, pendingCandidates: [], attempt, initiator, negotiationId: initiator ? crypto.randomUUID() : null, connectTimer: null, disconnectTimer: null, stage: `${initiator ? "\u5EFA\u7ACBOffer" : "\u7B49\u5F85Offer"} #${attempt}` };
       mp.peers.set(peerId, peer);
+      diagnostic("PEER_CREATE", peerId, `attempt=${attempt} role=${initiator ? "offerer" : "answerer"} nid=${shortId(peer.negotiationId)}`);
       peer.connectTimer = setTimeout(() => {
         if (mp.peers.get(peerId) === peer && peer.channel?.readyState !== "open") {
           peer.stage = `\u5354\u5546\u903E\u6642 #${attempt}\uFF0C\u6E96\u5099\u91CD\u8A66`;
+          diagnostic("TIMEOUT", peerId, `signal=${pc.signalingState} ice=${pc.iceConnectionState} connection=${pc.connectionState}`);
           renderPlayers();
           dropPeer(peerId, { retry: true });
         }
@@ -17706,6 +17726,7 @@
       };
       pc.onconnectionstatechange = () => {
         peer.stage = `\u9023\u7DDA ${pc.connectionState}`;
+        diagnostic("CONNECTION", peerId, `value=${pc.connectionState} signal=${pc.signalingState} ice=${pc.iceConnectionState}`);
         if (pc.connectionState === "connected") mp.peerRetryCounts.delete(peerId);
         if (pc.connectionState === "failed") return dropPeer(peerId, { retry: true });
         if (pc.connectionState === "disconnected") {
@@ -17718,6 +17739,7 @@
       };
       pc.oniceconnectionstatechange = () => {
         peer.stage = `ICE ${pc.iceConnectionState}`;
+        diagnostic("ICE", peerId, `value=${pc.iceConnectionState} signal=${pc.signalingState}`);
         renderPlayers();
       };
       pc.ondatachannel = ({ channel }) => attachChannel(peerId, channel);
@@ -17738,6 +17760,7 @@
     }
     async function receiveSignal(peerId, data) {
       if (data.restart) {
+        diagnostic("RECV_RESTART", peerId, `attempt=${data.attempt || "-"}`);
         if (mp.playerId < peerId) {
           dropPeer(peerId);
           makePeer(peerId, true);
@@ -17750,11 +17773,18 @@
         if (data.description) {
           const type = data.description.type;
           if (type === "answer") {
-            if (!peer.initiator || pc.signalingState !== "have-local-offer" || data.negotiationId && data.negotiationId !== peer.negotiationId) return;
+            if (!peer.initiator || pc.signalingState !== "have-local-offer" || data.negotiationId && data.negotiationId !== peer.negotiationId) {
+              diagnostic("IGNORE_ANSWER", peerId, `incoming=${shortId(data.negotiationId)} current=${shortId(peer.negotiationId)} role=${peer.initiator ? "offerer" : "answerer"} signal=${pc.signalingState}`);
+              return;
+            }
           } else if (type === "offer") {
-            if (peer.initiator || pc.signalingState !== "stable") return;
+            if (peer.initiator || pc.signalingState !== "stable") {
+              diagnostic("IGNORE_OFFER", peerId, `incoming=${shortId(data.negotiationId)} role=${peer.initiator ? "offerer" : "answerer"} signal=${pc.signalingState}`);
+              return;
+            }
             peer.negotiationId = data.negotiationId || crypto.randomUUID();
           }
+          diagnostic(`RECV_${type.toUpperCase()}`, peerId, `nid=${shortId(data.negotiationId)} signal=${pc.signalingState}`);
           peer.stage = `\u6536\u5230${type}`;
           renderPlayers();
           await pc.setRemoteDescription(data.description);
@@ -17764,11 +17794,15 @@
             send({ type: "signal", to: peerId, data: { description: pc.localDescription.toJSON?.() || pc.localDescription, negotiationId: peer.negotiationId } });
           }
         } else if (data.candidate) {
-          if (data.negotiationId && peer.negotiationId && data.negotiationId !== peer.negotiationId) return;
+          if (data.negotiationId && peer.negotiationId && data.negotiationId !== peer.negotiationId) {
+            diagnostic("IGNORE_ICE", peerId, `incoming=${shortId(data.negotiationId)} current=${shortId(peer.negotiationId)}`);
+            return;
+          }
           if (pc.remoteDescription) await pc.addIceCandidate(data.candidate);
           else peer.pendingCandidates.push({ candidate: data.candidate, negotiationId: data.negotiationId || null });
         }
       } catch (error2) {
+        diagnostic("SIGNAL_ERROR", peerId, `name=${error2.name} message=${error2.message} signal=${pc.signalingState} ice=${pc.iceConnectionState}`);
         status(`\u76F4\u9023\u5354\u5546\u5931\u6557\uFF1A${error2.message}`, "error");
       }
     }
@@ -17782,10 +17816,12 @@
         mp.peerRetryCounts.delete(peerId);
         peer.openedAt = Date.now();
         peer.stage = "DataChannel\u5DF2\u958B\u555F";
+        diagnostic("CHANNEL_OPEN", peerId, `attempt=${peer.attempt} nid=${shortId(peer.negotiationId)}`);
         renderPlayers();
         pingPeer(peerId);
       };
       channel.onclose = () => {
+        diagnostic("CHANNEL_CLOSE", peerId, `connection=${peer.pc.connectionState} ice=${peer.pc.iceConnectionState}`);
         renderPlayers();
         if (mp.roomId && mp.players.some((player) => player.playerId === peerId)) schedulePeerRetry(peerId);
       };
@@ -17812,6 +17848,7 @@
       const count = (mp.peerRetryCounts.get(peerId) || 0) + 1;
       mp.peerRetryCounts.set(peerId, count);
       const delay = Math.min(8e3, 800 * 2 ** Math.min(count - 1, 3));
+      diagnostic("RETRY", peerId, `count=${count} delay=${delay}ms`);
       const timer = setTimeout(() => {
         mp.peerRetryTimers.delete(peerId);
         if (!mp.peers.has(peerId) && mp.roomId && mp.players.some((player) => player.playerId === peerId)) makePeer(peerId, mp.playerId < peerId);
@@ -17822,6 +17859,7 @@
     function dropPeer(peerId, { retry = false } = {}) {
       const peer = mp.peers.get(peerId);
       if (peer) {
+        diagnostic("PEER_DROP", peerId, `retry=${retry} signal=${peer.pc.signalingState} ice=${peer.pc.iceConnectionState} connection=${peer.pc.connectionState}`);
         clearTimeout(peer.connectTimer);
         clearTimeout(peer.disconnectTimer);
         try {

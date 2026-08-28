@@ -1,7 +1,7 @@
 {
-  "version": "1.7.6",
-  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.7.6.zip",
-  "sha256": "D9B6F2787E8FDF63CF8A5AFB36633DBFC78BBE0BBE74BF7A334BAEB8A93E84EF",
+  "version": "1.7.7",
+  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.7.7.zip",
+  "sha256": "749670B145F178930FBCF1A35F69C72F336AD7A2011863462A98C172D4A62564",
   "minimumChromeVersion": "120",
-  "notes": "修正重新協商時舊Answer套用到新peer造成wrong state: stable：每輪Offer、Answer與ICE加入唯一negotiationId，僅接受同輪訊號，並依signalingState忽略過期SDP。"
+  "notes": "加入連線診斷LOG與一鍵複製：記錄每位玩家的協商輪次、Offer/Answer、signalingState、ICE與連線狀態、重試原因，以及被忽略的過期訊號。"
 }
