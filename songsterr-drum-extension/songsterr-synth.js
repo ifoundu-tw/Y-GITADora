@@ -16,7 +16,7 @@ globalThis.SDGSongsterrSynth=(()=>{
       context=context||new AudioContext({latencyHint:'interactive'});await context.resume();
       if(!outputBus){outputBus=context.createGain();limiter=context.createDynamicsCompressor();limiter.knee.value=1;limiter.ratio.value=20;limiter.attack.value=.001;limiter.release.value=.045;applyOutputSettings()}
       const response=await chrome.runtime.sendMessage({type:'sdg-songsterr-soundfont',url:FONT_URL});if(!response?.ok)throw Error(response?.error||'Songsterr 鼓音色下載失敗');const font=decodeBase64(response.base64);
-      liveSynth=new globalThis.JSSynth.Synthesizer();liveSynth.init(context.sampleRate,{polyphony:1024});liveSynth.setGain(1.2);const liveFontId=await liveSynth.loadSFont(font.slice(0));liveSynth.setChannelType(9,true);liveSynth.midiProgramSelect(9,liveFontId,128,0);liveNode=liveSynth.createAudioNode(context,1024);liveNode.connect(context.destination);
+      liveSynth=new globalThis.JSSynth.Synthesizer();liveSynth.init(context.sampleRate,{polyphony:1024});liveSynth.setGain(1.2);const liveFontId=await liveSynth.loadSFont(font.slice(0));liveSynth.setChannelType(9,true);liveSynth.midiProgramSelect(9,liveFontId,128,0);liveNode=liveSynth.createAudioNode(context,512);liveNode.connect(context.destination);
       renderer=new globalThis.JSSynth.Synthesizer();renderer.init(context.sampleRate,{polyphony:1024,reverbActive:false,chorusActive:false});renderer.setGain(1.2);rendererSoundfontId=await renderer.loadSFont(font.slice(0));renderer.setChannelType(9,true);renderer.midiProgramSelect(9,rendererSoundfontId,128,0);
       state='ready';lastError='';return true
     })().catch(error=>{state='error';lastError=error?.message||String(error);readyPromise=null;try{liveNode?.disconnect();liveSynth?.close();renderer?.close()}catch{}liveNode=null;liveSynth=null;renderer=null;throw error});return readyPromise
@@ -45,5 +45,8 @@ globalThis.SDGSongsterrSynth=(()=>{
     if(songState==='ready'&&layers?.length){const layer=layers.reduce((best,item)=>Math.abs(item.velocity-velocity)<Math.abs(best.velocity-velocity)?item:best,layers[0]),source=context.createBufferSource(),gain=context.createGain();source.buffer=layer.buffer;gain.gain.value=Math.max(.0001,1.8*master*laneLevel);source.connect(gain).connect(outputBus);rememberVoice(voiceGroup(art,lane),source,gain);source.start(context.currentTime);return true}
     liveSynth.midiNoteOn(9,midi,Math.max(1,Math.min(127,Math.round(velocity*master*laneLevel))));setTimeout(()=>{try{liveSynth?.midiNoteOff(9,midi)}catch{}},60);return true
   }
-  return{ensure,loadSong,play,configure,getState:()=>({state,songState,songKey,error:lastError,url:FONT_URL,pools:samplePools.size,limiterEnabled:limiterOn,limiterCeilingDb:limiterCeiling})};
+  function playLive(art,lane,intensity=.75,master=1,laneLevel=1,midiValue=null,velocityValue=null){
+    if(state!=='ready'){ensure().catch(()=>{});return false}context.resume();const midi=resolveMidi(art,lane,midiValue),velocity=quantizeVelocity(velocityValue??127*intensity),level=Math.max(0,master*laneLevel),value=Math.max(1,Math.min(127,Math.round(velocity*level)));liveSynth.midiNoteOn(9,midi,value);setTimeout(()=>{try{liveSynth?.midiNoteOff(9,midi)}catch{}},60);return true
+  }
+  return{ensure,loadSong,play,playLive,configure,getState:()=>({state,songState,songKey,error:lastError,url:FONT_URL,pools:samplePools.size,limiterEnabled:limiterOn,limiterCeilingDb:limiterCeiling})};
 })();

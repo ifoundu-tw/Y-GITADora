@@ -1,7 +1,7 @@
 {
-  "version": "1.8.5",
-  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.8.5.zip",
-  "sha256": "D5D3A4CB360F481F9F339AEACD7F01EC6103F125B004E22D49E0124E809993D5",
+  "version": "1.8.6",
+  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.8.6.zip",
+  "sha256": "8FF2E933D414259A89B3D85133339B617EC182401567EAA6FA0902AB56348B27",
   "minimumChromeVersion": "120",
-  "notes": "修正連線合奏準備狀態：房主只顯示全員開始、不需準備；房客換歌後立即回到尚未準備，準備狀態只對目前歌曲有效。"
+  "notes": "爵士鼓新增即時 SoundFont（BASS 架構）音色模式：依譜面 MIDI、力度與奏法即時發聲，不使用歌曲預渲染單擊池；原有兩套鼓音色完整保留。"
 }
