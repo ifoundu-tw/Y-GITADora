@@ -1,7 +1,7 @@
 {
-  "version": "1.8.8",
-  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.8.8.zip",
-  "sha256": "63403E0CE33C2691237BDFD8A8F4698A5E367D2037DE120AEE91B8DEA7264992",
+  "version": "1.8.9",
+  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.8.9.zip",
+  "sha256": "3CE17603F6C33F8C6AB8CD7C1D7600E15D490404E7D9FBE51F87C8B081921DE5",
   "minimumChromeVersion": "120",
-  "notes": "效能整理：移除 65 個已停用 FLAC 與舊頁面，ZIP 減少 66.6%；SoundFont 即時／渲染按需初始化；遊戲主迴圈改為兩秒視窗索引，預算力度、軌道與結束時間；純 Firebase 模式停止 RTC signals 訂閱。"
+  "notes": "播放清單歌曲卡移除綠色開始遊戲按鈕；整張歌曲卡仍可直接點擊進入遊戲，最愛、刪除與滑入試聽維持不變。"
 }
