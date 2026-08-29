@@ -3,7 +3,7 @@ globalThis.SDGSongsterrSynth=(()=>{
   const FONT_URL='https://static.songsterr.com/midi-player-v0/SGM_Plus_HQ/128-000-21-08-26-0.sf3';
   const midiByArt={'acoustic-bass-drum':35,'bass-drum':36,'side-stick':37,snare:38,'electric-snare':40,'floor-tom':41,'very-low-tom':43,'low-tom':45,'mid-tom':47,'high-tom':50,'closed-hihat':42,'foot-hihat':44,'open-hihat':46,'half-hihat':92,'high-crash':49,'medium-crash':57,china:52,splash:55,ride:51,'ride-bell':53,'ride-edge':59,'ride-choke':94,'splash-choke':95,'china-choke':96,'high-crash-choke':97,'medium-crash-choke':98};
   const laneMidi={crash:49,hihat:42,hihat_pedal:44,snare:38,high_tom:50,bass_drum:36,medium_tom:47,floor_tom:41,ride:51};
-  let context,liveSynth,liveNode,renderer,rendererSoundfontId,outputBus,limiter,limiterOn=true,limiterCeiling=-1,readyPromise,state='idle',lastError='',songKey='',songState='none',samplePools=new Map();
+  let context,liveSynth,liveNode,renderer,rendererSoundfontId,outputBus,limiter,fontBuffer,rendererPromise,limiterOn=true,limiterCeiling=-1,readyPromise,state='idle',lastError='',songKey='',songState='none',samplePools=new Map();
   const activeVoices=new Map();
   function decodeBase64(value){const raw=atob(value),bytes=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);return bytes.buffer}
   function quantizeVelocity(value){const v=Math.max(1,Math.min(127,Math.round(Number(value)||96)));return Math.max(16,Math.min(127,Math.round(v/16)*16))}
@@ -15,11 +15,13 @@ globalThis.SDGSongsterrSynth=(()=>{
       if(!globalThis.JSSynth)throw Error('FluidSynth 核心未載入');await globalThis.JSSynth.waitForReady();globalThis.JSSynth.disableLogging?.();
       context=context||new AudioContext({latencyHint:'interactive'});await context.resume();
       if(!outputBus){outputBus=context.createGain();limiter=context.createDynamicsCompressor();limiter.knee.value=1;limiter.ratio.value=20;limiter.attack.value=.001;limiter.release.value=.045;applyOutputSettings()}
-      const response=await chrome.runtime.sendMessage({type:'sdg-songsterr-soundfont',url:FONT_URL});if(!response?.ok)throw Error(response?.error||'Songsterr 鼓音色下載失敗');const font=decodeBase64(response.base64);
-      liveSynth=new globalThis.JSSynth.Synthesizer();liveSynth.init(context.sampleRate,{polyphony:1024});liveSynth.setGain(1.2);const liveFontId=await liveSynth.loadSFont(font.slice(0));liveSynth.setChannelType(9,true);liveSynth.midiProgramSelect(9,liveFontId,128,0);liveNode=liveSynth.createAudioNode(context,512);liveNode.connect(context.destination);
-      renderer=new globalThis.JSSynth.Synthesizer();renderer.init(context.sampleRate,{polyphony:1024,reverbActive:false,chorusActive:false});renderer.setGain(1.2);rendererSoundfontId=await renderer.loadSFont(font.slice(0));renderer.setChannelType(9,true);renderer.midiProgramSelect(9,rendererSoundfontId,128,0);
+      const response=await chrome.runtime.sendMessage({type:'sdg-songsterr-soundfont',url:FONT_URL});if(!response?.ok)throw Error(response?.error||'Songsterr 鼓音色下載失敗');fontBuffer=decodeBase64(response.base64);
+      liveSynth=new globalThis.JSSynth.Synthesizer();liveSynth.init(context.sampleRate,{polyphony:512});liveSynth.setGain(1.2);const liveFontId=await liveSynth.loadSFont(fontBuffer.slice(0));liveSynth.setChannelType(9,true);liveSynth.midiProgramSelect(9,liveFontId,128,0);liveNode=liveSynth.createAudioNode(context,512);liveNode.connect(outputBus);
       state='ready';lastError='';return true
-    })().catch(error=>{state='error';lastError=error?.message||String(error);readyPromise=null;try{liveNode?.disconnect();liveSynth?.close();renderer?.close()}catch{}liveNode=null;liveSynth=null;renderer=null;throw error});return readyPromise
+    })().catch(error=>{state='error';lastError=error?.message||String(error);readyPromise=null;try{liveNode?.disconnect();liveSynth?.close()}catch{}liveNode=null;liveSynth=null;throw error});return readyPromise
+  }
+  async function ensureRenderer(){
+    await ensure();if(renderer)return true;if(rendererPromise)return rendererPromise;rendererPromise=(async()=>{renderer=new globalThis.JSSynth.Synthesizer();renderer.init(context.sampleRate,{polyphony:1024,reverbActive:false,chorusActive:false});renderer.setGain(1.2);rendererSoundfontId=await renderer.loadSFont(fontBuffer.slice(0));renderer.setChannelType(9,true);renderer.midiProgramSelect(9,rendererSoundfontId,128,0);return true})().catch(error=>{try{renderer?.close()}catch{}renderer=null;rendererPromise=null;throw error});return rendererPromise
   }
   function trimRendered(left,right){const threshold=.00005,sr=context.sampleRate;let first=0,last=left.length-1;while(first<left.length&&Math.max(Math.abs(left[first]),Math.abs(right[first]))<threshold)first++;while(last>first&&Math.max(Math.abs(left[last]),Math.abs(right[last]))<threshold)last--;first=Math.max(0,first-Math.floor(sr*.003));last=Math.min(left.length-1,last+Math.floor(sr*.035));const length=Math.max(Math.floor(sr*.08),last-first+1),buffer=context.createBuffer(2,length,sr);buffer.copyToChannel(left.subarray(first,Math.min(left.length,first+length)),0);buffer.copyToChannel(right.subarray(first,Math.min(right.length,first+length)),1);return buffer}
   function renderOneShot(midi,velocity,art){
@@ -29,7 +31,7 @@ globalThis.SDGSongsterrSynth=(()=>{
     renderer.midiAllSoundsOff(-1);return trimRendered(left,right)
   }
   async function loadSong({songId,revisionId,partId,notes}){
-    const key=`${songId}/${revisionId}/${partId}`;if(songKey===key&&songState==='ready')return{key,pools:samplePools.size};await ensure();songKey=key;songState='loading';samplePools=new Map();
+    const key=`${songId}/${revisionId}/${partId}`;if(songKey===key&&songState==='ready')return{key,pools:samplePools.size};await ensureRenderer();songKey=key;songState='loading';samplePools=new Map();
     try{const requests=new Map();for(const note of notes||[]){const midi=resolveMidi(note.articulation,note.lane,note.midi),velocity=quantizeVelocity(note.velocity),id=`${midi}:${velocity}`;if(!requests.has(id))requests.set(id,{midi,velocity,art:note.articulation})}for(const [lane,midi] of Object.entries(laneMidi)){const id=`${midi}:96`;if(!requests.has(id))requests.set(id,{midi,velocity:96,art:null,lane})}
       let rendered=0;for(const request of requests.values()){const buffer=renderOneShot(request.midi,request.velocity,request.art),layers=samplePools.get(request.midi)||[];layers.push({velocity:request.velocity,buffer});samplePools.set(request.midi,layers);if(++rendered%4===0)await new Promise(resolve=>setTimeout(resolve,0))}for(const layers of samplePools.values())layers.sort((a,b)=>a.velocity-b.velocity);songState='ready';lastError='';return{key,pools:samplePools.size,layers:rendered}
     }catch(error){songState='error';lastError=error?.message||String(error);throw error}

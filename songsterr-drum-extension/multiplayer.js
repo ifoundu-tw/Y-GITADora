@@ -17673,11 +17673,6 @@
       }));
       mp.unsubs.push(onValue(ref(db, `rooms/${roomId}/meta`), (snapshot) => onMeta(snapshot.val())));
       mp.unsubs.push(onValue(playersRef, (snapshot) => onPlayers(snapshot.val() || {})));
-      mp.unsubs.push(onChildAdded(ref(db, `rooms/${roomId}/signals/${mp.playerId}`), async (snapshot) => {
-        const message = snapshot.val();
-        if (message?.from && message?.data) await receiveSignal(message.from, message.data);
-        await remove(snapshot.ref);
-      }));
       mp.unsubs.push(onValue(ref(db, `rooms/${roomId}/commands/start`), (snapshot) => {
         const command = snapshot.val();
         if (!command?.id || command.id === mp.lastStartId) return;
@@ -17714,7 +17709,6 @@
       if (mp.roomId && mp.playerId && !value[mp.playerId]) ensurePlayerPresence().catch((error2) => diagnostic("PRESENCE_REPAIR_ERROR", "", error2.message));
       if (mp.hostId && !value[mp.hostId] && mp.players.length) scheduleHostElection(mp.hostId);
       else cancelHostElection();
-      closePeers();
       renderPlayers();
       if (mp.players.some((player) => player.instrumentMode === "bass")) preloadBassSynth();
     }

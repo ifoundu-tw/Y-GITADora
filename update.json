@@ -1,7 +1,7 @@
 {
-  "version": "1.8.7",
-  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.8.7.zip",
-  "sha256": "D1CA7201F1FD1CE35F828070781EA55765C1EECE87B771CCA0507F6B238817E7",
+  "version": "1.8.8",
+  "zipUrl": "https://raw.githubusercontent.com/ifoundu-tw/Y-GITADora/master/ota/Y-GITADora-v1.8.8.zip",
+  "sha256": "63403E0CE33C2691237BDFD8A8F4698A5E367D2037DE120AEE91B8DEA7264992",
   "minimumChromeVersion": "120",
-  "notes": "移除爵士鼓的現行真實鼓音色；鼓音色只保留即時 SoundFont（BASS 架構）與 Songsterr 譜面渲染。舊設定會自動轉換為即時 SoundFont。"
+  "notes": "效能整理：移除 65 個已停用 FLAC 與舊頁面，ZIP 減少 66.6%；SoundFont 即時／渲染按需初始化；遊戲主迴圈改為兩秒視窗索引，預算力度、軌道與結束時間；純 Firebase 模式停止 RTC signals 訂閱。"
 }
